@@ -1,0 +1,6 @@
+go 1.21.4
+
+use ./
+use ./src/db
+use ./src/types
+use ./src/handlers
