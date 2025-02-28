@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"strconv"
+	"time"
 	"types"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -15,11 +16,14 @@ func GetDb(connString string) *sql.DB {
 		panic(fmt.Errorf("can't connect to database"))
 	}
 
-	fmt.Println("Connected to MySql DB")
 	err = db.Ping()
 	if err != nil {
 		panic(fmt.Errorf("can't connect to database"))
 	}
+	fmt.Println("Connected to MySql DB")
+	db.SetMaxOpenConns(10)
+	db.SetConnMaxLifetime(time.Minute * 3)
+	db.SetConnMaxIdleTime(time.Minute * 3)
 	return db
 }
 
@@ -32,7 +36,6 @@ func (e NotFoundError) Error() string {
 }
 
 func readOneRow(db *sql.DB, id string, query string) ([]string, []sql.RawBytes, error) {
-	var err error
 	stmt, err := db.Prepare(query)
 	if err != nil {
 		return nil, nil, err
@@ -42,6 +45,7 @@ func readOneRow(db *sql.DB, id string, query string) ([]string, []sql.RawBytes, 
 	if err != nil {
 		return nil, nil, err
 	}
+	defer rows.Close()
 	columns, err := rows.Columns()
 	if err != nil {
 		return nil, nil, err
@@ -72,6 +76,7 @@ func readMultiRow(db *sql.DB, id string, query string) ([]string, [][]sql.RawByt
 	if err != nil {
 		return nil, nil, err
 	}
+	defer rows.Close()
 	columns, err := rows.Columns()
 	if err != nil {
 		return nil, nil, err
@@ -341,7 +346,7 @@ insert cards (
 	return nil
 }
 
-func createColumn(db *sql.DB, projectId string, position int, colData *types.ColumnJson) error {
+func createColumn(db *sql.DB, projectId string, colData *types.ColumnJson) error {
 	stmt, err := db.Prepare(`
 insert columns (
     id,
@@ -445,7 +450,7 @@ func PostProject(db *sql.DB, id string, projectData *types.KanbanJson) error {
 		return NoEffect{}
 	}
 	for _, col := range projectData.Columns {
-		err = createColumn(db, id, col.Order, &col)
+		err = createColumn(db, id, &col)
 		if err != nil {
 			return err
 		}
