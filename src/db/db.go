@@ -295,7 +295,7 @@ func createTag(db *sql.DB, projectId string, tagData *types.TagJson) error {
 	return nil
 }
 
-func addCard(db *sql.DB, position int, cardData *types.CardJson) error {
+func addCard(db *sql.DB, cardData *types.CardJson) error {
 	stmt, err := db.Prepare(`
 insert cards (
     id,
@@ -324,11 +324,7 @@ insert cards (
 	if err != nil {
 		return err
 	}
-	lastOrder, err := getLastDrawOrder(db, "Cards", fmt.Sprintf("column_id = \"%s\"", cardData.ColumnId))
-	if err != nil {
-		return nil
-	}
-	res, err := stmt.Exec(cardData.Id, cardData.ColumnId, cardData.Name, cardData.Description, lastOrder+1)
+	res, err := stmt.Exec(cardData.Id, cardData.ColumnId, cardData.Name, cardData.Description, cardData.Order)
 	if err != nil {
 		return err
 	}
@@ -362,22 +358,7 @@ insert columns (
 		return err
 	}
 	defer stmt.Close()
-	var order int
-	if position == -1 {
-		order, err = getLastDrawOrder(db, "Columns", fmt.Sprintf("project_id = \"%s\"", projectId))
-		if err != nil {
-			return err
-		}
-		order++
-	} else {
-		order = position
-		err = createDrawSpace(db, position, "Columns", fmt.Sprintf("project_id = \"%s\"", projectId))
-		if err != nil {
-			return err
-		}
-	}
-
-	res, err := stmt.Exec(colData.Id, projectId, colData.Name, order)
+	res, err := stmt.Exec(colData.Id, projectId, colData.Name, colData.Order)
 	if err != nil {
 		return err
 	}
@@ -389,53 +370,7 @@ insert columns (
 		return NoEffect{}
 	}
 	for _, card := range colData.Cards {
-		addCard(db, card.Order, &card)
-	}
-	return nil
-}
-
-func getLastDrawOrder(db *sql.DB, table string, condition string) (int, error) {
-	stmt, err := db.Prepare(fmt.Sprintf(` 	SELECT MAX(draw_order) FROM %s WHERE %s;`, table, condition))
-	if err != nil {
-		return -1, err
-	}
-	defer stmt.Close()
-	rows, err := stmt.Query()
-	if err != nil {
-		return -1, err
-	}
-	columns, err := rows.Columns()
-	if err != nil {
-		return -1, err
-	}
-	values := make([]sql.RawBytes, len(columns))
-	scanArgs := make([]interface{}, len(values))
-	for i := range values {
-		scanArgs[i] = &values[i]
-	}
-	if !rows.Next() {
-		return -1, fmt.Errorf("draw order in table: %s was not found", table)
-	}
-	err = rows.Scan(scanArgs...)
-	if err != nil {
-		return -1, err
-	}
-	val, err := strconv.Atoi(string(values[0]))
-	if err != nil {
-		return 0, nil
-	}
-	return val, nil
-}
-
-func createDrawSpace(db *sql.DB, position int, table string, condition string) error {
-	stmt, err := db.Prepare(fmt.Sprintf(`UPDATE %s SET draw_order = draw_order + 1 WHERE draw_order >= ? AND %s;`, table, condition))
-	if err != nil {
-		return err
-	}
-	defer stmt.Close()
-	_, err = stmt.Exec(position)
-	if err != nil {
-		return nil
+		addCard(db, &card)
 	}
 	return nil
 }
