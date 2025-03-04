@@ -3,6 +3,7 @@ package db_driver
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"strconv"
 	"time"
@@ -220,9 +221,6 @@ where Cards.id=?;`)
 	for i := range values {
 		rowLength := len(values[i])
 		var newTag types.Tag
-		if values[i] == nil {
-			continue
-		}
 		for j := 0; j < rowLength; j++ {
 			col := values[i][j]
 			switch columns[j] {
@@ -408,6 +406,7 @@ func GetProject(db *sql.DB, id string) (*types.KanbanJson, error) {
 		outputCol := col.Json()
 		var outputCards []types.CardJson
 		cards, err := GetCards(db, col.Id)
+
 		if err != nil {
 			return nil, err
 		}
@@ -418,6 +417,7 @@ func GetProject(db *sql.DB, id string) (*types.KanbanJson, error) {
 			if err != nil {
 				return nil, err
 			}
+			fmt.Println(tags)
 			for _, tag := range tags {
 				outputCard.TagIds = append(outputCard.TagIds, tag.Id)
 			}
@@ -477,18 +477,26 @@ func UpdateProject(db *sql.DB, ctx context.Context, id string, project *types.Ka
 		return err
 	}
 	defer tx.Rollback()
-
+	_, err = tx.Exec("DELETE FROM Projects WHERE id = ?;", id)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
 	stmt, err := tx.Prepare(`
-	UPDATE Projects
-    SET 
-	name = ? # project name 
-	WHERE 
-	id = ? # project id;`)
+	INSERT Projects (
+	name, 
+	id
+	) VALUES (?, # project name 
+	? # project id);`)
 	if err != nil {
 		return err
 	}
 	defer stmt.Close()
-	stmt.Exec(project.Name, id)
+	_, err = stmt.Exec(project.Name, id)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
 	err = commitTags(tx, id, &project.Tags)
 	if err != nil {
 		tx.Rollback()
@@ -520,7 +528,6 @@ func commitTags(tx *sql.Tx, projectId string, tags *[]types.TagJson) error {
     ?, # name
     ? # color
 ) ON DUPLICATE KEY UPDATE
- id = id,
  project_id = project_id,
  name=name,
  color=color;`)
@@ -556,7 +563,6 @@ insert cards (
     ?, # card description
 	? # draw order
 ) ON DUPLICATE KEY UPDATE
- id = id,
  column_id = column_id,
  name = name,
  description = description,
@@ -565,6 +571,15 @@ insert cards (
 	if err != nil {
 		return err
 	}
+	defer stmt.Close()
+	stmtRT, err := tx.Prepare(`select * from cardstags 
+	where 
+	card_id = ? AND # card id
+	tag_id = ? # tag id`)
+	if err != nil {
+		return err
+	}
+	defer stmtRT.Close()
 	stmtCT, err := tx.Prepare(`
 	insert CardsTags (card_id, tag_id) values (
 
@@ -574,6 +589,7 @@ insert cards (
 	if err != nil {
 		return err
 	}
+	defer stmtCT.Close()
 	var cardErr error
 	for _, card := range *cards {
 		_, err := stmt.Exec(card.Id, columnId, card.Name, card.Description, card.Order)
@@ -581,7 +597,20 @@ insert cards (
 			cardErr = err
 		}
 		for _, tagId := range card.TagIds {
-			stmtCT.Exec(card.Id, tagId)
+			row := stmtRT.QueryRow(card.Id, tagId)
+			err := row.Scan()
+			if err != nil {
+				if errors.Is(err, sql.ErrNoRows) {
+					stmtCT.Exec(card.Id, tagId)
+				} else {
+					cardErr = err
+					break
+				}
+
+			}
+			if cardErr != nil {
+				break
+			}
 		}
 	}
 	if cardErr != nil {
