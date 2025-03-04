@@ -1,6 +1,7 @@
 package db_driver
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"strconv"
@@ -340,8 +341,12 @@ insert cards (
 	if rows == 0 {
 		return NoEffect{}
 	}
+	var cycleErr error
 	for _, tagId := range cardData.TagIds {
-		stmtCT.Exec(cardData.Id, tagId)
+		_, cycleErr = stmtCT.Exec(cardData.Id, tagId)
+	}
+	if cycleErr != nil {
+		return cycleErr
 	}
 	return nil
 }
@@ -449,17 +454,169 @@ func PostProject(db *sql.DB, id string, projectData *types.KanbanJson) error {
 	if rows == 0 {
 		return NoEffect{}
 	}
+	for _, tag := range projectData.Tags {
+		err = createTag(db, id, &tag)
+		if err != nil {
+			return err
+		}
+	}
 	for _, col := range projectData.Columns {
 		err = createColumn(db, id, &col)
 		if err != nil {
 			return err
 		}
 	}
-	for _, tag := range projectData.Tags {
-		err = createTag(db, id, &tag)
+
+	return nil
+}
+
+func UpdateProject(db *sql.DB, ctx context.Context, id string, project *types.KanbanJson) error {
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	defer tx.Rollback()
+
+	stmt, err := tx.Prepare(`
+	UPDATE Projects
+    SET 
+	name = ? # project name 
+	WHERE 
+	id = ? # project id;`)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+	stmt.Exec(project.Name, id)
+	err = commitTags(tx, id, &project.Tags)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	err = commitColumns(tx, id, &project.Columns)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func commitTags(tx *sql.Tx, projectId string, tags *[]types.TagJson) error {
+	stmt, err := tx.Prepare(`
+	insert tags (
+    id,
+    project_id,
+    name,
+    color
+) values (
+    ?, # id
+    ?, # project id
+    ?, # name
+    ? # color
+) ON DUPLICATE KEY UPDATE
+ id = id,
+ project_id = project_id,
+ name=name,
+ color=color;`)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+	var tagErr error
+	for _, tag := range *tags {
+		_, err := stmt.Exec(tag.Id, projectId, tag.Name, tag.Color)
 		if err != nil {
-			return err
+			tagErr = err
 		}
+	}
+	if tagErr != nil {
+		return tagErr
+	}
+	return nil
+}
+
+func commitCards(tx *sql.Tx, columnId string, cards *[]types.CardJson) error {
+	stmt, err := tx.Prepare(`
+insert cards (
+    id,
+    column_id,
+    name,
+    description,
+	draw_order
+) values (
+    ?, # id
+    ?, # associated column id
+    ?, # name
+    ?, # card description
+	? # draw order
+) ON DUPLICATE KEY UPDATE
+ id = id,
+ column_id = column_id,
+ name = name,
+ description = description,
+ draw_order = draw_order;
+`)
+	if err != nil {
+		return err
+	}
+	stmtCT, err := tx.Prepare(`
+	insert CardsTags (card_id, tag_id) values (
+
+    ?, # card_id
+    ? # tag_id
+);`)
+	if err != nil {
+		return err
+	}
+	var cardErr error
+	for _, card := range *cards {
+		_, err := stmt.Exec(card.Id, columnId, card.Name, card.Description, card.Order)
+		if err != nil {
+			cardErr = err
+		}
+		for _, tagId := range card.TagIds {
+			stmtCT.Exec(card.Id, tagId)
+		}
+	}
+	if cardErr != nil {
+		return cardErr
+	}
+	return nil
+}
+
+func commitColumns(tx *sql.Tx, projectId string, columns *[]types.ColumnJson) error {
+	stmt, err := tx.Prepare(`
+insert columns (
+    id,
+    project_id,
+    name,
+	draw_order
+) values (
+    ?, # id
+    ?, # associated project id
+    ?, # name
+	? # draw order
+) ON DUPLICATE KEY UPDATE id=id, project_id=project_id, name=name, draw_order=draw_order;`)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+	var colErr error
+	for _, col := range *columns {
+		_, err := stmt.Exec(col.Id, projectId, col.Name, col.Order)
+		if err != nil {
+			colErr = err
+		}
+		commitCards(tx, col.Id, &col.Cards)
+	}
+	if colErr != nil {
+		return colErr
 	}
 	return nil
 }

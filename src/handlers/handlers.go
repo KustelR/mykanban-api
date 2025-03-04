@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"database/sql"
 	"db_driver"
 	"encoding/json"
@@ -160,29 +161,22 @@ func GetProjectUpdater(db *sql.DB) http.HandlerFunc {
 				return
 			}
 		}
-		res, err := db.Exec("DELETE FROM Projects WHERE id = ?", id)
+		err = db_driver.UpdateProject(db, context.Background(), id, &reqData)
 		if err != nil {
+			if (err == db_driver.NoEffect{}) {
+				w.WriteHeader(http.StatusNotFound)
+				fmt.Fprintf(w, "Project %s not found\n", id)
+				log.Printf("[%s] Put request not fulfilled, can't put with new id\n", id)
+				return
+			}
 			w.WriteHeader(http.StatusInternalServerError)
 			fmt.Fprintf(w, "Something went wrong on the server side: %s\n", err)
 			log.Printf("[%s] Put request not fulfilled, internal error\n", id)
 			return
 		}
-		affected, _ := res.RowsAffected()
-		if affected <= 0 {
-			w.WriteHeader(http.StatusNotFound)
-			fmt.Fprintf(w, "Project %s not found\n", id)
-			log.Printf("[%s] Put request not fulfilled, can't put with new id\n", id)
-			return
-		}
-		err = db_driver.PostProject(db, id, &reqData)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprintf(w, "Something went wrong on the server side: %s\n", err)
-			log.Printf("[%s] Put request not fulfilled, internal error: %s\n", id, err)
-			return
-		}
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprint(w, "Update succesfull")
+		fmt.Fprint(w, "Updated succesfully")
+		log.Printf("[%s] Updated succesfully", id)
 	}
 	return handler
 }
