@@ -29,6 +29,17 @@ func HandleDeleteRequest(db *sql.DB, id string, reader io.Reader) error {
 	return nil
 }
 
+func badRequest(w http.ResponseWriter, r *http.Request, err error) {
+	w.WriteHeader(http.StatusBadRequest)
+	fmt.Fprintf(w, "Can't read payload: %s\n", err)
+	log.Printf("Request from %s not fulfilled, bad request: %s\n", r.Host, err)
+}
+func badResponse(w http.ResponseWriter, r *http.Request, err error) {
+	w.WriteHeader(http.StatusInternalServerError)
+	fmt.Fprintf(w, "Bad Request: %s\n", err)
+	log.Printf("[%s] Request not fulfilled, bad request: %s\n", r.Host, err)
+}
+
 func HandleRequest(db *sql.DB, id string, reader io.Reader) error {
 	decoder := json.NewDecoder(reader)
 	var reqData postRequest
@@ -73,9 +84,7 @@ func GetProjectGetter(db *sql.DB) http.HandlerFunc {
 				fmt.Fprint(w, err.Error())
 				return
 			} else {
-				w.WriteHeader(http.StatusInternalServerError)
-				fmt.Fprintf(w, "Bad Request: %s\n", err)
-				log.Printf("[%s] Get request not fulfilled, bad request: %s\n", id, err)
+				badResponse(w, r, err)
 				return
 			}
 		}
@@ -96,18 +105,14 @@ func GetProjectCreator(db *sql.DB) http.HandlerFunc {
 		err := decoder.Decode(&reqData)
 		if err != nil {
 			if err != io.EOF {
-				w.WriteHeader(http.StatusBadRequest)
-				fmt.Fprintf(w, "Can't read payload: %s\n", err)
-				log.Printf("Post request from %s not fulfilled, bad request: %s\n", r.Host, err)
+				badRequest(w, r, err)
 				return
 			}
 		}
 		id := uuid.New()
 		err = db_driver.PostProject(db, id.String()[:30], &reqData)
 		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprintf(w, "Something went wrong on the server side: %s\n", err)
-			log.Printf("[%s] Post request not fulfilled, internal error: %s\n", id, err)
+			badResponse(w, r, err)
 			return
 		}
 		fmt.Fprint(w, id.String()[:30])
@@ -125,9 +130,7 @@ func GetProjectDeleter(db *sql.DB) http.HandlerFunc {
 		log.Printf("[%s] Received a delete request from %s\n", id, r.Host)
 		res, err := db.Exec("DELETE FROM Projects WHERE id = ?", id)
 		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprintf(w, "Something went wrong on the serverside: %s\n", err)
-			log.Printf("[%s] Delete request not fulfilled, internal error\n", id)
+			badResponse(w, r, err)
 			return
 		}
 		affected, _ := res.RowsAffected()
@@ -155,9 +158,7 @@ func GetProjectUpdater(db *sql.DB) http.HandlerFunc {
 		err := decoder.Decode(&reqData)
 		if err != nil {
 			if err != io.EOF {
-				w.WriteHeader(http.StatusBadRequest)
-				fmt.Fprintf(w, "Can't read payload: %s\n", err)
-				log.Printf("Put request from %s not fulfilled, bad request: %s\n", r.Host, err)
+				badRequest(w, r, err)
 				return
 			}
 		}
@@ -169,9 +170,137 @@ func GetProjectUpdater(db *sql.DB) http.HandlerFunc {
 				log.Printf("[%s] Put request not fulfilled, can't put with new id\n", id)
 				return
 			}
-			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprintf(w, "Something went wrong on the server side: %s\n", err)
-			log.Printf("[%s] Put request not fulfilled, internal error\n", id)
+			badResponse(w, r, err)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, "Updated succesfully")
+		log.Printf("[%s] Updated succesfully", id)
+	}
+	return handler
+}
+
+func GetCardTagAdder(db *sql.DB) http.HandlerFunc {
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPut {
+			http.NotFound(w, r)
+			return
+		}
+		params, _ := url.ParseQuery(r.URL.RawQuery)
+		id := params.Get("id")
+		log.Printf("[%s] [PUT] Received a link tag to card request from %s\n", id, r.Host)
+		decoder := json.NewDecoder(r.Body)
+		var reqData struct {
+			CardId string `json:"cardId"`
+			TagId  string `json:"tagId"`
+		}
+		err := decoder.Decode(&reqData)
+		if err != nil {
+			if err != io.EOF {
+				badRequest(w, r, err)
+				return
+			}
+		}
+		err = db_driver.AddCardTags(db_driver.CreateAgentDB(db), reqData.CardId, reqData.TagId)
+		if err != nil {
+			badResponse(w, r, err)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, "Updated succesfully")
+		log.Printf("[%s] Updated succesfully", id)
+	}
+	return handler
+}
+
+func GetCardTagRemover(db *sql.DB) http.HandlerFunc {
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodDelete {
+			http.NotFound(w, r)
+			return
+		}
+		params, _ := url.ParseQuery(r.URL.RawQuery)
+		id := params.Get("id")
+		log.Printf("[%s] [DELETE] Received a unlink tag from card request from %s\n", id, r.Host)
+		decoder := json.NewDecoder(r.Body)
+		var reqData struct {
+			CardId string `json:"cardId"`
+			TagId  string `json:"tagId"`
+		}
+		err := decoder.Decode(&reqData)
+		if err != nil {
+			if err != io.EOF {
+				badRequest(w, r, err)
+				return
+			}
+		}
+		err = db_driver.RemoveCardTags(db_driver.CreateAgentDB(db), reqData.CardId, reqData.TagId)
+		if err != nil {
+			badResponse(w, r, err)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, "Deleted succesfully")
+		log.Printf("[%s] Deleted succesfully", id)
+	}
+	return handler
+}
+
+func GetTagCreator(db *sql.DB) http.HandlerFunc {
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.NotFound(w, r)
+			return
+		}
+		params, _ := url.ParseQuery(r.URL.RawQuery)
+		id := params.Get("id")
+		log.Printf("[%s] [POST] Received a post tag request from %s\n", id, r.Host)
+		decoder := json.NewDecoder(r.Body)
+		var reqData types.TagJson
+		err := decoder.Decode(&reqData)
+		if err != nil {
+			if err != io.EOF {
+				badRequest(w, r, err)
+				return
+			}
+		}
+		tags := make([]types.TagJson, 0)
+		tags = append(tags, reqData)
+		err = db_driver.AddTags(db_driver.CreateAgentDB(db), id, &tags)
+		if err != nil {
+			badResponse(w, r, err)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, "Updated succesfully")
+		log.Printf("[%s] Updated succesfully", id)
+	}
+	return handler
+}
+
+func GetTagDeleter(db *sql.DB) http.HandlerFunc {
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodDelete {
+			http.NotFound(w, r)
+			return
+		}
+		params, _ := url.ParseQuery(r.URL.RawQuery)
+		id := params.Get("id")
+		log.Printf("[%s] [DELETE] Received a delete tag request from %s\n", id, r.Host)
+		decoder := json.NewDecoder(r.Body)
+		var reqData struct {
+			Id string `json:"id"`
+		}
+		err := decoder.Decode(&reqData)
+		if err != nil {
+			if err != io.EOF {
+				badRequest(w, r, err)
+				return
+			}
+		}
+		_, err = db.Exec("DELETE FROM Tags WHERE id = ?", reqData.Id)
+		if err != nil {
+			badResponse(w, r, err)
 			return
 		}
 		w.WriteHeader(http.StatusOK)

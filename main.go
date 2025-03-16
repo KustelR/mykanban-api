@@ -48,10 +48,21 @@ func main() {
 	postHandler := newHandler(handlers.GetProjectCreator(db))
 	deleteHandler := newHandler(handlers.GetProjectDeleter(db))
 	updateHandler := newHandler(handlers.GetProjectUpdater(db))
+
 	http.Handle("/read", getHandler)
 	http.Handle("/create", postHandler)
 	http.Handle("/delete", deleteHandler)
 	http.Handle("/update", updateHandler)
+
+	addTagToCardHandler := newHandler(handlers.GetCardTagAdder(db))
+	removeTagFromCardHandler := newHandler(handlers.GetCardTagRemover(db))
+	postTagHandler := newHandler(handlers.GetTagCreator(db))
+	deleteTagHandler := newHandler(handlers.GetTagDeleter(db))
+
+	http.Handle("/tags/create", postTagHandler)
+	http.Handle("/tags/delete", deleteTagHandler)
+	http.Handle("/tags/link", addTagToCardHandler)
+	http.Handle("/tags/unlink", removeTagFromCardHandler)
 
 	var wg sync.WaitGroup
 	wg.Add(1)

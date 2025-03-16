@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"reflect"
 	"strconv"
 	"time"
 	"types"
@@ -135,11 +134,6 @@ func GetCard(db *sql.DB, id string) (*types.Card, error) {
 func readProject(db *sql.DB, id string) (*types.Kanban, error) {
 	var project types.Kanban
 	columns, values, err := readOneRow(db, id, "select * from Projects where id=?;")
-	pValues := reflect.TypeOf(project)
-	pVLength := pValues.NumField()
-	for i := 0; i < pVLength; i++ {
-		fmt.Printf("%d:%v\n", i, pValues.Field(i).Name)
-	}
 	for i, col := range values {
 		switch columns[i] {
 		case "id":
@@ -321,7 +315,7 @@ func GetProject(db *sql.DB, id string) (*types.KanbanJson, error) {
 }
 
 func PostProject(db *sql.DB, id string, projectData *types.KanbanJson) error {
-	agent := createAgentDB(db)
+	agent := CreateAgentDB(db)
 	stmt, err := agent.Prepare(`
 	insert projects (
     name,
@@ -345,7 +339,7 @@ func PostProject(db *sql.DB, id string, projectData *types.KanbanJson) error {
 	if rows == 0 {
 		return NoEffect{}
 	}
-	err = addTags(agent, id, &projectData.Tags)
+	err = AddTags(agent, id, &projectData.Tags)
 	if err != nil {
 		return err
 	}
@@ -359,7 +353,7 @@ func PostProject(db *sql.DB, id string, projectData *types.KanbanJson) error {
 
 func UpdateProject(db *sql.DB, ctx context.Context, id string, project *types.KanbanJson) error {
 	tx, err := db.BeginTx(ctx, nil)
-	agent := createAgentTX(tx)
+	agent := CreateAgentTX(tx)
 	if err != nil {
 		tx.Rollback()
 		return err
@@ -387,7 +381,7 @@ func UpdateProject(db *sql.DB, ctx context.Context, id string, project *types.Ka
 		tx.Rollback()
 		return err
 	}
-	err = addTags(agent, id, &project.Tags)
+	err = AddTags(agent, id, &project.Tags)
 	if err != nil {
 		tx.Rollback()
 		return err
@@ -405,7 +399,7 @@ func UpdateProject(db *sql.DB, ctx context.Context, id string, project *types.Ka
 	return nil
 }
 
-func addTags(agent *Agent, projectId string, tags *[]types.TagJson) error {
+func AddTags(agent *Agent, projectId string, tags *[]types.TagJson) error {
 	stmt, err := agent.Prepare(`
 	insert tags (
     id,
@@ -438,25 +432,37 @@ func addTags(agent *Agent, projectId string, tags *[]types.TagJson) error {
 	return nil
 }
 
+func AddCardTags(agent *Agent, cardId string, tagId string) error {
+	stmt, err := agent.Prepare(`
+	INSERT CardsTags 
+		(card_id, tag_id) 
+	VALUES 
+	(
+		?, # card_id 
+		? # tag_id
+	);`)
+	if err != nil {
+		return err
+	}
+	stmt.Exec(cardId, tagId)
+	stmt.Close()
+	return nil
+}
+
+func RemoveCardTags(agent *Agent, cardId string, tagId string) error {
+	stmtCT, err := agent.Prepare(`
+	DELETE FROM CardsTags WHERE card_id = ? AND tag_id = ?;`)
+	if err != nil {
+		return err
+	}
+	stmtCT.Exec(cardId, tagId)
+	stmtCT.Close()
+	return nil
+}
+
 func addCards(agent *Agent, columnId string, cards *[]types.CardJson) error {
 	stmt, err := agent.Prepare(`
-insert cards (
-    id,
-    column_id,
-    name,
-    description,
-	draw_order
-) values (
-    ?, # id
-    ?, # associated column id
-    ?, # name
-    ?, # card description
-	? # draw order
-) ON DUPLICATE KEY UPDATE
- column_id = column_id,
- name = name,
- description = description,
- draw_order = draw_order;
+	CALL add_card(?, ?, ?, ?, ?)
 `)
 	if err != nil {
 		return err
@@ -470,36 +476,25 @@ insert cards (
 		return err
 	}
 	defer stmtRT.Close()
-	stmtCT, err := agent.Prepare(`
-	insert CardsTags (card_id, tag_id) values (
-
-    ?, # card_id
-    ? # tag_id
-    );`)
-	if err != nil {
-		return err
-	}
-	defer stmtCT.Close()
 	var cardErr error
+out:
 	for _, card := range *cards {
-		_, err := stmt.Exec(card.Id, columnId, card.Name, card.Description, card.Order)
+		_, err := stmt.Exec(columnId, card.Id, card.Name, card.Description, card.Order)
 		if err != nil {
 			cardErr = err
+			break out
 		}
 		for _, tagId := range card.TagIds {
 			row := stmtRT.QueryRow(card.Id, tagId)
 			err := row.Scan()
 			if err != nil {
 				if errors.Is(err, sql.ErrNoRows) {
-					stmtCT.Exec(card.Id, tagId)
+					AddCardTags(agent, card.Id, tagId)
 				} else {
 					cardErr = err
-					break
+					break out
 				}
 
-			}
-			if cardErr != nil {
-				break
 			}
 		}
 	}
@@ -510,29 +505,23 @@ insert cards (
 }
 
 func addColumns(agent *Agent, projectId string, columns *[]types.ColumnJson) error {
-	stmt, err := agent.Prepare(`
-insert columns (
-    id,
-    project_id,
-    name,
-	draw_order
-) values (
-    ?, # id
-    ?, # associated project id
-    ?, # name
-	? # draw order
-) ON DUPLICATE KEY UPDATE id=id, project_id=project_id, name=name, draw_order=draw_order;`)
+	stmt, err := agent.Prepare(`CALL add_column(?, ?, ?, ?)`)
 	if err != nil {
 		return err
 	}
 	defer stmt.Close()
 	var colErr error
+out:
 	for _, col := range *columns {
-		_, err := stmt.Exec(col.Id, projectId, col.Name, col.Order)
+		_, err := stmt.Exec(projectId, col.Id, col.Name, col.Order)
 		if err != nil {
 			colErr = err
+			break out
 		}
-		addCards(agent, col.Id, &col.Cards)
+		colErr = addCards(agent, col.Id, &col.Cards)
+		if colErr != nil {
+			break out
+		}
 	}
 	if colErr != nil {
 		return colErr
@@ -540,11 +529,11 @@ insert columns (
 	return nil
 }
 
-func createAgentDB(db *sql.DB) *Agent {
+func CreateAgentDB(db *sql.DB) *Agent {
 	agent := Agent{db, nil}
 	return &agent
 }
-func createAgentTX(tx *sql.Tx) *Agent {
+func CreateAgentTX(tx *sql.Tx) *Agent {
 	agent := Agent{nil, tx}
 	return &agent
 }
