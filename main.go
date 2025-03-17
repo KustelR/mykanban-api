@@ -54,6 +54,14 @@ func main() {
 	http.Handle("/delete", deleteHandler)
 	http.Handle("/update", updateHandler)
 
+	cardCreateHandler := newHandler(handlers.GetCardCreator(db))
+	cardUpdateHandler := newHandler(handlers.GetCardUpdater(db))
+	cardDeleteHandler := newHandler(handlers.GetCardDeleter(db))
+
+	http.Handle("/cards/create", cardCreateHandler)
+	http.Handle("/cards/update", cardUpdateHandler)
+	http.Handle("/cards/delete", cardDeleteHandler)
+
 	addTagToCardHandler := newHandler(handlers.GetCardTagAdder(db))
 	removeTagFromCardHandler := newHandler(handlers.GetCardTagRemover(db))
 	postTagHandler := newHandler(handlers.GetTagCreator(db))
@@ -63,6 +71,10 @@ func main() {
 	http.Handle("/tags/delete", deleteTagHandler)
 	http.Handle("/tags/link", addTagToCardHandler)
 	http.Handle("/tags/unlink", removeTagFromCardHandler)
+
+	forceReorderHandler := newHandler(handlers.GetCardForcePopOrder(db))
+
+	http.Handle("/columns/force_reorder", forceReorderHandler)
 
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -74,7 +86,7 @@ func main() {
 func cors(handler func(http.ResponseWriter, *http.Request)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE, PATCH")
 		w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
 
 		if r.Method == "OPTIONS" {

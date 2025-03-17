@@ -186,9 +186,7 @@ func GetCardTagAdder(db *sql.DB) http.HandlerFunc {
 			http.NotFound(w, r)
 			return
 		}
-		params, _ := url.ParseQuery(r.URL.RawQuery)
-		id := params.Get("id")
-		log.Printf("[%s] [PUT] Received a link tag to card request from %s\n", id, r.Host)
+		log.Printf("[PUT] Received a link tag to card request from %s\n", r.Host)
 		decoder := json.NewDecoder(r.Body)
 		var reqData struct {
 			CardId string `json:"cardId"`
@@ -207,8 +205,8 @@ func GetCardTagAdder(db *sql.DB) http.HandlerFunc {
 			return
 		}
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprint(w, "Updated succesfully")
-		log.Printf("[%s] Updated succesfully", id)
+		fmt.Fprint(w, "Tag linked succesfully")
+		log.Printf("Tag linked succesfully")
 	}
 	return handler
 }
@@ -304,8 +302,125 @@ func GetTagDeleter(db *sql.DB) http.HandlerFunc {
 			return
 		}
 		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, "Deleted succesfully")
+		log.Printf("[%s] Deleted succesfully", id)
+	}
+	return handler
+}
+
+func GetCardCreator(db *sql.DB) http.HandlerFunc {
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.NotFound(w, r)
+			return
+		}
+		log.Printf("[POST] Received a update card request from %s\n", r.Host)
+		decoder := json.NewDecoder(r.Body)
+		var reqData types.CardJson
+		err := decoder.Decode(&reqData)
+		if err != nil {
+			if err != io.EOF {
+				badRequest(w, r, err)
+				return
+			}
+		}
+		_, err = db.Exec("CALL add_card(?, ?, ?, ?, ?);", reqData.ColumnId, reqData.Id, reqData.Name, reqData.Description, reqData.Order)
+		if err != nil {
+			badResponse(w, r, err)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, "Created succesfully")
+		log.Printf("[POST] Created succesfully\n")
+	}
+	return handler
+}
+
+func GetCardUpdater(db *sql.DB) http.HandlerFunc {
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPut {
+			http.NotFound(w, r)
+			return
+		}
+		log.Printf("[PUT] Received a update card request from %s\n", r.Host)
+		decoder := json.NewDecoder(r.Body)
+		var reqData types.CardJson
+		err := decoder.Decode(&reqData)
+		if err != nil {
+			if err != io.EOF {
+				badRequest(w, r, err)
+				return
+			}
+		}
+		_, err = db.Exec("CALL update_card(?, ?, ?, ?, ?);", reqData.Id, reqData.ColumnId, reqData.Name, reqData.Description, reqData.Order)
+		if err != nil {
+			badResponse(w, r, err)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
 		fmt.Fprint(w, "Updated succesfully")
-		log.Printf("[%s] Updated succesfully", id)
+		log.Printf("[PUT] Updated succesfully\n")
+	}
+	return handler
+}
+
+func GetCardDeleter(db *sql.DB) http.HandlerFunc {
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodDelete {
+			http.NotFound(w, r)
+			return
+		}
+		log.Printf("[%s] [DELETE] Received a delete card request\n", r.Host)
+		decoder := json.NewDecoder(r.Body)
+		var reqData struct {
+			Id string `json:"id"`
+		}
+		err := decoder.Decode(&reqData)
+		if err != nil {
+			if err != io.EOF {
+				badRequest(w, r, err)
+				return
+			}
+		}
+		err = db_driver.DeleteCard(db, reqData.Id)
+		if err != nil {
+			badResponse(w, r, err)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, "Deleted succesfully")
+		log.Printf("Deleted succesfully")
+	}
+	return handler
+}
+
+func GetCardForcePopOrder(db *sql.DB) http.HandlerFunc {
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPatch {
+			http.NotFound(w, r)
+			return
+		}
+		log.Printf("[%s] [PATCH] Received a pop card order request\n", r.Host)
+		decoder := json.NewDecoder(r.Body)
+		var reqData struct {
+			Order    int    `json:"order"`
+			ColumnId string `json:"columnId"`
+		}
+		err := decoder.Decode(&reqData)
+		if err != nil {
+			if err != io.EOF {
+				badRequest(w, r, err)
+				return
+			}
+		}
+		_, err = db.Exec("CALL pop_card_reorder(?, ?)", reqData.ColumnId, reqData.Order)
+		if err != nil {
+			badResponse(w, r, err)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, "Updated succesfully")
+		log.Printf("Update succesfully")
 	}
 	return handler
 }

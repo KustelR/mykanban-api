@@ -239,7 +239,10 @@ where Cards.id=?;`)
 
 func GetTagsByProject(db *sql.DB, id string) ([]types.Tag, error) {
 	var outputTags []types.Tag
-	columns, values, err := readMultiRow(db, id, `select * from tags where project_id=?`)
+	columns, values, err := readMultiRow(db, id, `select * from tags where project_id=?;`)
+	if err != nil {
+		return nil, err
+	}
 	for i := range values {
 		rowLength := len(values[i])
 		var newTag types.Tag
@@ -303,7 +306,9 @@ func GetProject(db *sql.DB, id string) (*types.KanbanJson, error) {
 				return nil, err
 			}
 			for _, tag := range tags {
-				outputCard.TagIds = append(outputCard.TagIds, tag.Id)
+				if tag.Id != "" {
+					outputCard.TagIds = append(outputCard.TagIds, tag.Id)
+				}
 			}
 
 			outputCards = append(outputCards, *outputCard)
@@ -525,6 +530,46 @@ out:
 	}
 	if colErr != nil {
 		return colErr
+	}
+	return nil
+}
+
+func DeleteCard(db *sql.DB, id string) error {
+	tx, err := db.BeginTx(context.Background(), nil)
+	if err != nil {
+		return err
+	}
+	agent := CreateAgentTX(tx)
+	stmt, err := agent.Prepare("DELETE FROM Cards WHERE id = ?;")
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	card, err := GetCard(db, id)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	stmtPC, err := agent.Prepare("CALL pop_card_reorder(?, ?);")
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	_, err = stmtPC.Exec(card.ColumnId, card.Order)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	_, err = stmt.Exec(id)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	fmt.Println(card)
+
+	err = tx.Commit()
+	if err != nil {
+		return err
 	}
 	return nil
 }
