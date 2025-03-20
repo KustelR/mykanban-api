@@ -31,14 +31,15 @@ func GetDb(connString string) *sql.DB {
 
 type NotFoundError struct {
 	thing string
+	query *string
 }
 
 func (e NotFoundError) Error() string {
 	return fmt.Sprintf("%s was not found", e.thing)
 }
 
-func readOneRow(db *sql.DB, id string, query string) ([]string, []sql.RawBytes, error) {
-	stmt, err := db.Prepare(query)
+func readOneRow(agent *Agent, id string, query string) ([]string, []sql.RawBytes, error) {
+	stmt, err := agent.Prepare(query)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -58,7 +59,7 @@ func readOneRow(db *sql.DB, id string, query string) ([]string, []sql.RawBytes, 
 		scanArgs[i] = &values[i]
 	}
 	if !rows.Next() {
-		return nil, nil, NotFoundError{fmt.Sprintf("project with id %s", id)}
+		return nil, nil, NotFoundError{fmt.Sprintf("item with id %s", id), &query}
 	}
 	err = rows.Scan(scanArgs...)
 	if err != nil {
@@ -132,8 +133,9 @@ func GetCard(agent *Agent, id string) (*types.Card, error) {
 }
 
 func readProject(db *sql.DB, id string) (*types.Kanban, error) {
+	agent := CreateAgentDB(db)
 	var project types.Kanban
-	columns, values, err := readOneRow(db, id, "select * from Projects where id=?;")
+	columns, values, err := readOneRow(agent, id, "select * from Projects where id=?;")
 	for i, col := range values {
 		switch columns[i] {
 		case "id":
@@ -545,7 +547,7 @@ func DeleteCard(db *sql.DB, id string) error {
 		tx.Rollback()
 		return err
 	}
-	card, err := GetCard(db, id)
+	card, err := GetCard(agent, id)
 	if err != nil {
 		tx.Rollback()
 		return err
@@ -594,4 +596,49 @@ func (a *Agent) Prepare(query string) (*sql.Stmt, error) {
 	} else {
 		return a.tx.Prepare(query)
 	}
+}
+
+func UpdateCard(db *sql.DB, card *types.CardJson) error {
+	tx, err := db.BeginTx(context.Background(), nil)
+	agent := CreateAgentTX(tx)
+	if err != nil {
+		return err
+	}
+	stmt, err := agent.Prepare("CALL update_card(?, ?, ?, ?, ?);")
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	defer stmt.Close()
+
+	oldCard, err := GetCard(agent, card.Id)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	if oldCard.ColumnId != card.ColumnId {
+		stmtPop, err := agent.Prepare("CALL pop_card_reorder(?, ?);")
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+		defer stmt.Close()
+		fmt.Println(oldCard, card.ColumnId)
+		_, err = stmtPop.Exec(oldCard.ColumnId, oldCard.Order)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+	_, err = stmt.Exec(card.Id, card.ColumnId, card.Name, card.Description, card.Order)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
+	return nil
 }

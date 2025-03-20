@@ -337,6 +337,7 @@ func GetCardCreator(db *sql.DB) http.HandlerFunc {
 }
 
 func GetCardUpdater(db *sql.DB) http.HandlerFunc {
+
 	handler := func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPut {
 			http.NotFound(w, r)
@@ -352,7 +353,7 @@ func GetCardUpdater(db *sql.DB) http.HandlerFunc {
 				return
 			}
 		}
-		_, err = db.Exec("CALL update_card(?, ?, ?, ?, ?);", reqData.Id, reqData.ColumnId, reqData.Name, reqData.Description, reqData.Order)
+		db_driver.UpdateCard(db, &reqData)
 		if err != nil {
 			badResponse(w, r, err)
 			return
