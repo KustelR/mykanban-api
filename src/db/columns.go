@@ -63,7 +63,7 @@ func DeleteColumn(db *sql.DB, id string) error {
 	return nil
 }
 
-func addColumns(agent *Agent, projectId string, columns *[]types.ColumnJson) error {
+func AddColumns(agent *Agent, projectId string, columns *[]types.ColumnJson) error {
 	stmt, err := agent.Prepare(`CALL add_column(?, ?, ?, ?)`)
 	if err != nil {
 		return err

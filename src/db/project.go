@@ -41,7 +41,7 @@ func UpdateProject(db *sql.DB, ctx context.Context, id string, project *types.Ka
 		tx.Rollback()
 		return err
 	}
-	err = addColumns(agent, id, &project.Columns)
+	err = AddColumns(agent, id, &project.Columns)
 	if err != nil {
 		tx.Rollback()
 		return err
@@ -83,7 +83,7 @@ func PostProject(db *sql.DB, id string, projectData *types.KanbanJson) error {
 	if err != nil {
 		return err
 	}
-	err = addColumns(agent, id, &projectData.Columns)
+	err = AddColumns(agent, id, &projectData.Columns)
 	if err != nil {
 		return err
 	}

@@ -48,11 +48,13 @@ func main() {
 	postHandler := newHandler(handlers.GetProjectCreator(db))
 	deleteHandler := newHandler(handlers.GetProjectDeleter(db))
 	updateHandler := newHandler(handlers.GetProjectUpdater(db))
+	updateDataHandler := newHandler(handlers.GetProjectDataUpdater(db))
 
 	http.Handle("/read", getHandler)
 	http.Handle("/create", postHandler)
 	http.Handle("/delete", deleteHandler)
 	http.Handle("/update", updateHandler)
+	http.Handle("/data/update", updateDataHandler)
 
 	cardCreateHandler := newHandler(handlers.GetCardCreator(db))
 	cardUpdateHandler := newHandler(handlers.GetCardUpdater(db))
@@ -75,10 +77,12 @@ func main() {
 	forceReorderHandler := newHandler(handlers.GetCardForcePopOrder(db))
 	columnDataUpdateHandler := newHandler(handlers.GetColumnDataUpdater(db))
 	columnDeleteHandler := newHandler(handlers.GetColumnDeleter(db))
+	columnCreateHandler := newHandler(handlers.GetColumnCreator(db))
 
-	http.Handle("/columns/force_reorder", forceReorderHandler)
+	http.Handle("/columns/create", columnCreateHandler)
 	http.Handle("/columns/update", columnDataUpdateHandler)
 	http.Handle("/columns/delete", columnDeleteHandler)
+	http.Handle("/columns/force_reorder", forceReorderHandler)
 
 	var wg sync.WaitGroup
 	wg.Add(1)

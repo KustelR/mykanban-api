@@ -460,7 +460,6 @@ func GetColumnDataUpdater(db *sql.DB) http.HandlerFunc {
 			}
 		}
 		colData := types.Column{Id: reqData.Id, Name: reqData.Name, Order: reqData.Order, ProjectId: *id}
-		fmt.Println(colData)
 		db_driver.UpdateColumnData(db, &colData)
 		if err != nil {
 			badResponse(w, r, err)
@@ -499,6 +498,75 @@ func GetColumnDeleter(db *sql.DB) http.HandlerFunc {
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprint(w, "Deleted succesfully")
 		log.Printf("Deleted succesfully")
+	}
+	return handler
+}
+
+func GetColumnCreator(db *sql.DB) http.HandlerFunc {
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.NotFound(w, r)
+			return
+		}
+		id := getProjectId(w, r)
+		if id == nil {
+			return
+		}
+		log.Printf("[%s] [POST] Received a create column request from %s\n", *id, r.Host)
+		decoder := json.NewDecoder(r.Body)
+		var reqData types.ColumnJson
+		err := decoder.Decode(&reqData)
+		if err != nil {
+			if err != io.EOF {
+				badRequest(w, r, err)
+				return
+			}
+		}
+		columns := make([]types.ColumnJson, 0)
+		columns = append(columns, reqData)
+		err = db_driver.AddColumns(db_driver.CreateAgentDB(db), *id, &columns)
+		if err != nil {
+			badResponse(w, r, err)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, "Updated succesfully")
+		log.Printf("[%s] Updated succesfully", *id)
+	}
+	return handler
+}
+
+func GetProjectDataUpdater(db *sql.DB) http.HandlerFunc {
+
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPut {
+			http.NotFound(w, r)
+			return
+		}
+		id := getProjectId(w, r)
+		if id == nil {
+			return
+		}
+		log.Printf("[PUT] Received a update project data request from %s\n", r.Host)
+		decoder := json.NewDecoder(r.Body)
+		var reqData struct {
+			Name string `json:"name"`
+		}
+		err := decoder.Decode(&reqData)
+		if err != nil {
+			if err != io.EOF {
+				badRequest(w, r, err)
+				return
+			}
+		}
+		_, err = db.Exec("CALL update_project_data(?, ?)", id, reqData.Name)
+		if err != nil {
+			badResponse(w, r, err)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, "Updated succesfully")
+		log.Printf("[PUT] Updated succesfully\n")
 	}
 	return handler
 }
