@@ -40,7 +40,7 @@ func AddTags(agent *Agent, projectId string, tags *[]types.TagJson) error {
 
 func GetTagsByCard(db *sql.DB, id string) ([]types.Tag, error) {
 	var outputTags []types.Tag
-	columns, values, err := readMultiRow(db, id, `select Tags.* from Tags join
+	columns, values, err := readMultiRow(CreateAgentDB(db), id, `select Tags.* from Tags join
 CardsTags on Tags.id = CardsTags.tag_id join
 Cards on Cards.id = CardsTags.card_id
 where Cards.id=?;`)
@@ -65,7 +65,7 @@ where Cards.id=?;`)
 
 func GetTagsByProject(db *sql.DB, id string) ([]types.Tag, error) {
 	var outputTags []types.Tag
-	columns, values, err := readMultiRow(db, id, `select * from tags where project_id=?;`)
+	columns, values, err := readMultiRow(CreateAgentDB(db), id, `select * from tags where project_id=?;`)
 	if err != nil {
 		return nil, err
 	}

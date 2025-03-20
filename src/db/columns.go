@@ -12,11 +12,13 @@ func UpdateColumnData(db *sql.DB, column *types.Column) error {
 	if err != nil {
 		return err
 	}
+	defer tx.Rollback()
 	stmt, err := agent.Prepare("CALL update_column_data(?, ?, ?)")
 	if err != nil {
 		tx.Rollback()
 		return err
 	}
+	defer stmt.Close()
 	_, err = stmt.Exec(column.Id, column.Name, column.Order)
 	if err != nil {
 		tx.Rollback()
@@ -24,6 +26,40 @@ func UpdateColumnData(db *sql.DB, column *types.Column) error {
 	}
 
 	tx.Commit()
+	return nil
+}
+
+func DeleteColumn(db *sql.DB, id string) error {
+	tx, err := db.BeginTx(context.Background(), nil)
+	agent := CreateAgentTX(tx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	stmt, err := agent.Prepare("DELETE FROM Columns WHERE id = ?;")
+	if err != nil {
+		return nil
+	}
+	oldCols, err := readColumns(agent, id)
+	if err != nil {
+		return nil
+	}
+	if len(oldCols) > 0 {
+		stmtP, err := agent.Prepare("CALL pop_column_reorder(?, ?)")
+		if err != nil {
+			return nil
+		}
+		defer stmtP.Close()
+
+		oldCol := oldCols[0]
+		stmtP.Exec(oldCol.ProjectId, oldCol.Order)
+	}
+	stmt.Exec(id)
+
+	err = tx.Commit()
+	if err != nil {
+		return nil
+	}
 	return nil
 }
 

@@ -37,9 +37,9 @@ func readOneRow(agent *Agent, id string, query string) ([]string, []sql.RawBytes
 	return columns, values, nil
 }
 
-func readMultiRow(db *sql.DB, id string, query string) ([]string, [][]sql.RawBytes, error) {
+func readMultiRow(agent *Agent, id string, query string) ([]string, [][]sql.RawBytes, error) {
 	var err error
-	stmt, err := db.Prepare(query)
+	stmt, err := agent.Prepare(query)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -103,7 +103,7 @@ func GetCard(agent *Agent, id string) (*types.Card, error) {
 
 func GetCards(db *sql.DB, id string) ([]types.Card, error) {
 	var outputCards []types.Card
-	columns, values, err := readMultiRow(db, id, `select Cards.* from Columns join
+	columns, values, err := readMultiRow(CreateAgentDB(db), id, `select Cards.* from Columns join
 Cards on Cards.column_id = Columns.id
 where Columns.id=?;`)
 	for i := range values {
@@ -151,7 +151,7 @@ func GetProject(db *sql.DB, id string) (*types.KanbanJson, error) {
 		outputTag := tag.Json()
 		output.Tags = append(output.Tags, *outputTag)
 	}
-	columns, err := readColumns(db, id)
+	columns, err := readColumns(CreateAgentDB(db), id)
 	if err != nil {
 		return nil, err
 	}
@@ -198,9 +198,9 @@ func readProject(db *sql.DB, id string) (*types.Kanban, error) {
 	}
 	return &project, err
 }
-func readColumns(db *sql.DB, id string) ([]types.Column, error) {
+func readColumns(agent *Agent, id string) ([]types.Column, error) {
 	var outputColumns []types.Column
-	columns, values, err := readMultiRow(db, id, `select columns.* from projects join
+	columns, values, err := readMultiRow(agent, id, `select columns.* from projects join
 columns on columns.project_id = Projects.id
 where Projects.id=?;`)
 	for i := range values {
