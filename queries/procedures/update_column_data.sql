@@ -8,7 +8,7 @@ BEGIN
     UPDATE Columns 
     SET 
     name = p_name,
-    draw_order = p_draw_order,
+    draw_order = p_draw_order
     WHERE id = p_id;
 END$$
 

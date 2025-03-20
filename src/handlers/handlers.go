@@ -35,9 +35,21 @@ func badRequest(w http.ResponseWriter, r *http.Request, err error) {
 	log.Printf("Request from %s not fulfilled, bad request: %s\n", r.Host, err)
 }
 func badResponse(w http.ResponseWriter, r *http.Request, err error) {
-	w.WriteHeader(http.StatusInternalServerError)
+	w.WriteHeader(http.StatusBadRequest)
 	fmt.Fprintf(w, "Bad Request: %s\n", err)
 	log.Printf("[%s] Request not fulfilled, bad request: %s\n", r.Host, err)
+}
+
+func getProjectId(w http.ResponseWriter, r *http.Request) *string {
+	params, _ := url.ParseQuery(r.URL.RawQuery)
+	id := params.Get("id")
+	if id == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "Bad project id provided \n")
+		log.Printf("[%s] Request failed, bad project id\n", r.Host)
+		return nil
+	}
+	return &id
 }
 
 func HandleRequest(db *sql.DB, id string, reader io.Reader) error {
@@ -422,6 +434,71 @@ func GetCardForcePopOrder(db *sql.DB) http.HandlerFunc {
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprint(w, "Updated succesfully")
 		log.Printf("Update succesfully")
+	}
+	return handler
+}
+
+func GetColumnDataUpdater(db *sql.DB) http.HandlerFunc {
+
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPut {
+			http.NotFound(w, r)
+			return
+		}
+		id := getProjectId(w, r)
+		if id == nil {
+			return
+		}
+		log.Printf("[PUT] Received a update column data request from %s\n", r.Host)
+		decoder := json.NewDecoder(r.Body)
+		var reqData types.ColumnJson
+		err := decoder.Decode(&reqData)
+		if err != nil {
+			if err != io.EOF {
+				badRequest(w, r, err)
+				return
+			}
+		}
+		colData := types.Column{Id: reqData.Id, Name: reqData.Name, Order: reqData.Order, ProjectId: *id}
+		fmt.Println(colData)
+		db_driver.UpdateColumnData(db, &colData)
+		if err != nil {
+			badResponse(w, r, err)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, "Updated succesfully")
+		log.Printf("[PUT] Updated succesfully\n")
+	}
+	return handler
+}
+
+func GetColumnDeleter(db *sql.DB) http.HandlerFunc {
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodDelete {
+			http.NotFound(w, r)
+			return
+		}
+		log.Printf("[%s] [DELETE] Received a delete column request\n", r.Host)
+		decoder := json.NewDecoder(r.Body)
+		var reqData struct {
+			Id string `json:"id"`
+		}
+		err := decoder.Decode(&reqData)
+		if err != nil {
+			if err != io.EOF {
+				badRequest(w, r, err)
+				return
+			}
+		}
+		err = db_driver.DeleteColumn(db, reqData.Id)
+		if err != nil {
+			badResponse(w, r, err)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, "Deleted succesfully")
+		log.Printf("Deleted succesfully")
 	}
 	return handler
 }

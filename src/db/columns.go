@@ -3,6 +3,7 @@ package db_driver
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"types"
 )
 
@@ -38,22 +39,21 @@ func DeleteColumn(db *sql.DB, id string) error {
 	defer tx.Rollback()
 	stmt, err := agent.Prepare("DELETE FROM Columns WHERE id = ?;")
 	if err != nil {
-		return nil
+		tx.Rollback()
+		return err
 	}
-	oldCols, err := readColumns(agent, id)
+	oldCol, err := GetColumn(agent, id)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	stmtP, err := agent.Prepare("CALL pop_column_reorder(?, ?)")
 	if err != nil {
 		return nil
 	}
-	if len(oldCols) > 0 {
-		stmtP, err := agent.Prepare("CALL pop_column_reorder(?, ?)")
-		if err != nil {
-			return nil
-		}
-		defer stmtP.Close()
-
-		oldCol := oldCols[0]
-		stmtP.Exec(oldCol.ProjectId, oldCol.Order)
-	}
+	defer stmtP.Close()
+	fmt.Println(oldCol.ProjectId, oldCol.Order)
+	stmtP.Exec(oldCol.ProjectId, oldCol.Order)
 	stmt.Exec(id)
 
 	err = tx.Commit()

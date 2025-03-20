@@ -89,7 +89,7 @@ func GetCard(agent *Agent, id string) (*types.Card, error) {
 		case "name":
 			card.Name = string(col)
 		case "description":
-			card.Name = string(col)
+			card.Description = string(col)
 		case "draw_order":
 			val, err := strconv.Atoi(string(col))
 			if err != nil {
@@ -198,9 +198,34 @@ func readProject(db *sql.DB, id string) (*types.Kanban, error) {
 	}
 	return &project, err
 }
-func readColumns(agent *Agent, id string) ([]types.Column, error) {
+
+func GetColumn(agent *Agent, id string) (*types.Column, error) {
+	colNames, values, err := readOneRow(agent, id, "SELECT * FROM COLUMNS WHERE id = ?;")
+	if err != nil {
+		return nil, err
+	}
+	var column types.Column
+	for i, col := range values {
+		switch colNames[i] {
+		case "id":
+			column.Id = string(col)
+		case "name":
+			column.Name = string(col)
+		case "project_id":
+			column.ProjectId = string(col)
+		case "draw_order":
+			val, err := strconv.Atoi(string(col))
+			if err != nil {
+				return nil, err
+			}
+			column.Order = val
+		}
+	}
+	return &column, nil
+}
+func readColumns(agent *Agent, projectId string) ([]types.Column, error) {
 	var outputColumns []types.Column
-	columns, values, err := readMultiRow(agent, id, `select columns.* from projects join
+	columns, values, err := readMultiRow(agent, projectId, `select columns.* from projects join
 columns on columns.project_id = Projects.id
 where Projects.id=?;`)
 	for i := range values {
