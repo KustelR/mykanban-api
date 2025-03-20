@@ -104,8 +104,8 @@ func readMultiRow(db *sql.DB, id string, query string) ([]string, [][]sql.RawByt
 	return columns, output, nil
 }
 
-func GetCard(db *sql.DB, id string) (*types.Card, error) {
-	columns, values, err := readOneRow(db, id, `SELECT * FROM Cards WHERE id = ?`)
+func GetCard(agent *Agent, id string) (*types.Card, error) {
+	columns, values, err := readOneRow(agent, id, `SELECT * FROM Cards WHERE id = ?;`)
 	if err != nil {
 		return nil, err
 	}
@@ -115,7 +115,7 @@ func GetCard(db *sql.DB, id string) (*types.Card, error) {
 		case "id":
 			card.Id = string(col)
 		case "column_id":
-			card.Id = string(col)
+			card.ColumnId = string(col)
 		case "name":
 			card.Name = string(col)
 		case "description":
