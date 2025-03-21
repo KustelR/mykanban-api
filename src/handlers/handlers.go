@@ -539,7 +539,7 @@ func GetColumnCreator(db *sql.DB) http.HandlerFunc {
 func GetProjectDataUpdater(db *sql.DB) http.HandlerFunc {
 
 	handler := func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPut {
+		if r.Method != http.MethodPatch {
 			http.NotFound(w, r)
 			return
 		}
