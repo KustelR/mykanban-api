@@ -11,12 +11,12 @@ import (
 func GetDb(connString string) *sql.DB {
 	db, err := sql.Open("mysql", connString)
 	if err != nil {
-		panic(fmt.Errorf("can't connect to database"))
+		panic(fmt.Errorf("can't connect to database, err: %s", err))
 	}
 
 	err = db.Ping()
 	if err != nil {
-		panic(fmt.Errorf("can't connect to database"))
+		panic(fmt.Errorf("failed pinging database: %s", err))
 	}
 	fmt.Println("Connected to MySql DB")
 	db.SetMaxOpenConns(10)

@@ -200,7 +200,7 @@ func readProject(db *sql.DB, id string) (*types.Kanban, error) {
 }
 
 func GetColumn(agent *Agent, id string) (*types.Column, error) {
-	colNames, values, err := readOneRow(agent, id, "SELECT * FROM COLUMNS WHERE id = ?;")
+	colNames, values, err := readOneRow(agent, id, "SELECT * FROM Columns WHERE id = ?;")
 	if err != nil {
 		return nil, err
 	}
@@ -225,8 +225,8 @@ func GetColumn(agent *Agent, id string) (*types.Column, error) {
 }
 func readColumns(agent *Agent, projectId string) ([]types.Column, error) {
 	var outputColumns []types.Column
-	columns, values, err := readMultiRow(agent, projectId, `select columns.* from projects join
-columns on columns.project_id = Projects.id
+	columns, values, err := readMultiRow(agent, projectId, `select Columns.* from Projects join
+Columns on Columns.project_id = Projects.id
 where Projects.id=?;`)
 	for i := range values {
 		rowLength := len(values[i])

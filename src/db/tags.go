@@ -7,7 +7,7 @@ import (
 
 func AddTags(agent *Agent, projectId string, tags *[]types.TagJson) error {
 	stmt, err := agent.Prepare(`
-	insert tags (
+	insert Tags (
     id,
     project_id,
     name,
@@ -65,7 +65,7 @@ where Cards.id=?;`)
 
 func GetTagsByProject(db *sql.DB, id string) ([]types.Tag, error) {
 	var outputTags []types.Tag
-	columns, values, err := readMultiRow(CreateAgentDB(db), id, `select * from tags where project_id=?;`)
+	columns, values, err := readMultiRow(CreateAgentDB(db), id, `select * from Tags where project_id=?;`)
 	if err != nil {
 		return nil, err
 	}

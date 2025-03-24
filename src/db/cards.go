@@ -129,7 +129,7 @@ func addCards(agent *Agent, columnId string, cards *[]types.CardJson) error {
 		return err
 	}
 	defer stmt.Close()
-	stmtRT, err := agent.Prepare(`select * from cardstags 
+	stmtRT, err := agent.Prepare(`select * from CardsTags 
 	where 
 	card_id = ? AND # card id
 	tag_id = ? # tag id`)

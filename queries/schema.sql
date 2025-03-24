@@ -9,7 +9,7 @@ create table Columns (
     name varchar(20) not null,
     draw_order int unsigned not null,
     primary key (id),
-    foreign key (project_id) references projects (id) ON DELETE CASCADE
+    foreign key (project_id) references Projects (id) ON DELETE CASCADE
 );
 create table Cards (
     id varchar(30) not null,
@@ -33,6 +33,6 @@ create table CardsTags (
     card_id varchar(30) not null,
     tag_id varchar(30) not null,
     primary key (id),
-    foreign key (card_id) references cards (id) ON DELETE CASCADE,
-    foreign key (tag_id) references tags (id) ON DELETE CASCADE
+    foreign key (card_id) references Cards (id) ON DELETE CASCADE,
+    foreign key (tag_id) references Tags (id) ON DELETE CASCADE
 );

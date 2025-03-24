@@ -57,7 +57,7 @@ func UpdateProject(db *sql.DB, ctx context.Context, id string, project *types.Ka
 func PostProject(db *sql.DB, id string, projectData *types.KanbanJson) error {
 	agent := CreateAgentDB(db)
 	stmt, err := agent.Prepare(`
-	insert projects (
+	insert Projects (
     name,
     id    
 ) values (
