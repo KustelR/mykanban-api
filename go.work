@@ -1,6 +1,10 @@
-go 1.21.4
+go 1.21
 
-use ./
 use ./src/db
+
 use ./src/types
-use ./src/handlers
+
+use (
+	.
+	./src/handlers
+)
