@@ -38,12 +38,18 @@ func serve(port string, wg *sync.WaitGroup) {
 func main() {
 	err := godotenv.Load()
 	if err != nil {
-		log.Fatal("Error loading .env file")
+		log.Printf("Error when loading .env file: %s\n", err)
 	}
 	connectionString := os.Getenv("MYSQL_CONNECTION_STRING")
+	if connectionString == "" {
+		panic(fmt.Errorf("provide connection string to a database via MYSQL_CONNECTION_STRING enviroment variable"))
+	}
+	port := os.Getenv("PORT")
+	if port == "" {
+		panic(fmt.Errorf("provide port via PORT enviroment variable"))
+	}
 
 	db := db_driver.GetDb(connectionString)
-	port := "7501"
 	getHandler := newHandler(handlers.GetProjectGetter(db))
 	postHandler := newHandler(handlers.GetProjectCreator(db))
 	deleteHandler := newHandler(handlers.GetProjectDeleter(db))
