@@ -40,6 +40,12 @@ func badResponse(w http.ResponseWriter, r *http.Request, err error) {
 	log.Printf("[%s] Request not fulfilled, bad request: %s\n", r.Host, err)
 }
 
+func badMethod(w http.ResponseWriter, r *http.Request, methods []string) {
+	w.WriteHeader(http.StatusMethodNotAllowed)
+	fmt.Fprintf(w, "Bad Method, allowed methods: %s\n", methods)
+	log.Printf("[%s] Request not fulfilled, bad method: %s, allowed: %s\n", r.Host, r.Method, methods)
+}
+
 func getProjectId(w http.ResponseWriter, r *http.Request) *string {
 	params, _ := url.ParseQuery(r.URL.RawQuery)
 	id := params.Get("id")
@@ -83,7 +89,7 @@ func GetProjectGetter(db *sql.DB) http.HandlerFunc {
 		params, _ := url.ParseQuery(r.URL.RawQuery)
 		id := params.Get("id")
 		if r.Method != http.MethodGet {
-			http.NotFound(w, r)
+			badMethod(w, r, []string{"get"})
 			return
 		}
 		log.Printf("[%s] Received a get request from %s\n", id, r.Host)
@@ -108,7 +114,7 @@ func GetProjectGetter(db *sql.DB) http.HandlerFunc {
 func GetProjectCreator(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
-			http.NotFound(w, r)
+			badMethod(w, r, []string{"post"})
 			return
 		}
 		log.Printf("[NEW] Received a post request from %s\n", r.Host)
@@ -134,7 +140,7 @@ func GetProjectCreator(db *sql.DB) http.HandlerFunc {
 func GetProjectDeleter(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodDelete {
-			http.NotFound(w, r)
+			badMethod(w, r, []string{"delete"})
 			return
 		}
 		params, _ := url.ParseQuery(r.URL.RawQuery)
@@ -159,7 +165,7 @@ func GetProjectDeleter(db *sql.DB) http.HandlerFunc {
 func GetProjectUpdater(db *sql.DB) http.HandlerFunc {
 	handler := func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPut {
-			http.NotFound(w, r)
+			badMethod(w, r, []string{"put"})
 			return
 		}
 		params, _ := url.ParseQuery(r.URL.RawQuery)
@@ -195,7 +201,7 @@ func GetProjectUpdater(db *sql.DB) http.HandlerFunc {
 func GetCardTagAdder(db *sql.DB) http.HandlerFunc {
 	handler := func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPut {
-			http.NotFound(w, r)
+			badMethod(w, r, []string{"put"})
 			return
 		}
 		log.Printf("[PUT] Received a link tag to card request from %s\n", r.Host)
@@ -226,7 +232,7 @@ func GetCardTagAdder(db *sql.DB) http.HandlerFunc {
 func GetCardTagRemover(db *sql.DB) http.HandlerFunc {
 	handler := func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodDelete {
-			http.NotFound(w, r)
+			badMethod(w, r, []string{"delete"})
 			return
 		}
 		params, _ := url.ParseQuery(r.URL.RawQuery)
@@ -259,7 +265,7 @@ func GetCardTagRemover(db *sql.DB) http.HandlerFunc {
 func GetTagCreator(db *sql.DB) http.HandlerFunc {
 	handler := func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
-			http.NotFound(w, r)
+			badMethod(w, r, []string{"post"})
 			return
 		}
 		params, _ := url.ParseQuery(r.URL.RawQuery)
@@ -291,7 +297,7 @@ func GetTagCreator(db *sql.DB) http.HandlerFunc {
 func GetTagDeleter(db *sql.DB) http.HandlerFunc {
 	handler := func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodDelete {
-			http.NotFound(w, r)
+			badMethod(w, r, []string{"delete"})
 			return
 		}
 		params, _ := url.ParseQuery(r.URL.RawQuery)
@@ -323,7 +329,7 @@ func GetTagDeleter(db *sql.DB) http.HandlerFunc {
 func GetCardCreator(db *sql.DB) http.HandlerFunc {
 	handler := func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
-			http.NotFound(w, r)
+			badMethod(w, r, []string{"post"})
 			return
 		}
 		log.Printf("[POST] Received a update card request from %s\n", r.Host)
@@ -352,7 +358,7 @@ func GetCardUpdater(db *sql.DB) http.HandlerFunc {
 
 	handler := func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPut {
-			http.NotFound(w, r)
+			badMethod(w, r, []string{"put"})
 			return
 		}
 		log.Printf("[PUT] Received a update card request from %s\n", r.Host)
@@ -380,7 +386,7 @@ func GetCardUpdater(db *sql.DB) http.HandlerFunc {
 func GetCardDeleter(db *sql.DB) http.HandlerFunc {
 	handler := func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodDelete {
-			http.NotFound(w, r)
+			badMethod(w, r, []string{"delete"})
 			return
 		}
 		log.Printf("[%s] [DELETE] Received a delete card request\n", r.Host)
@@ -410,7 +416,7 @@ func GetCardDeleter(db *sql.DB) http.HandlerFunc {
 func GetCardForcePopOrder(db *sql.DB) http.HandlerFunc {
 	handler := func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPatch {
-			http.NotFound(w, r)
+			badMethod(w, r, []string{"patch"})
 			return
 		}
 		log.Printf("[%s] [PATCH] Received a pop card order request\n", r.Host)
@@ -442,7 +448,7 @@ func GetColumnDataUpdater(db *sql.DB) http.HandlerFunc {
 
 	handler := func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPut {
-			http.NotFound(w, r)
+			badMethod(w, r, []string{"put"})
 			return
 		}
 		id := getProjectId(w, r)
@@ -475,7 +481,7 @@ func GetColumnDataUpdater(db *sql.DB) http.HandlerFunc {
 func GetColumnDeleter(db *sql.DB) http.HandlerFunc {
 	handler := func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodDelete {
-			http.NotFound(w, r)
+			badMethod(w, r, []string{"delete"})
 			return
 		}
 		log.Printf("[%s] [DELETE] Received a delete column request\n", r.Host)
@@ -505,7 +511,7 @@ func GetColumnDeleter(db *sql.DB) http.HandlerFunc {
 func GetColumnCreator(db *sql.DB) http.HandlerFunc {
 	handler := func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
-			http.NotFound(w, r)
+			badMethod(w, r, []string{"post"})
 			return
 		}
 		id := getProjectId(w, r)
@@ -540,7 +546,7 @@ func GetProjectDataUpdater(db *sql.DB) http.HandlerFunc {
 
 	handler := func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPatch {
-			http.NotFound(w, r)
+			badMethod(w, r, []string{"patch"})
 			return
 		}
 		id := getProjectId(w, r)
