@@ -19,10 +19,6 @@ import (
 func readProject(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	params, _ := url.ParseQuery(r.URL.RawQuery)
 	id := params.Get("id")
-	if r.Method != http.MethodGet {
-		badMethod(w, r, []string{"get"})
-		return
-	}
 	log.Printf("[%s] Received a get request from %s\n", id, r.Host)
 	data, err := readProjectById(db, id)
 	if err != nil {
