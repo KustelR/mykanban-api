@@ -50,17 +50,12 @@ func main() {
 	}
 
 	db := db_driver.GetDb(connectionString)
-	getHandler := newHandler(handlers.GetProjectGetter(db))
-	postHandler := newHandler(handlers.GetProjectCreator(db))
-	deleteHandler := newHandler(handlers.GetProjectDeleter(db))
-	updateHandler := newHandler(handlers.GetProjectUpdater(db))
-	updateDataHandler := newHandler(handlers.GetProjectDataUpdater(db))
 
-	http.Handle("/read", getHandler)
-	http.Handle("/create", postHandler)
-	http.Handle("/delete", deleteHandler)
-	http.Handle("/update", updateHandler)
-	http.Handle("/data/update", updateDataHandler)
+	updateDataHandler := newHandler(handlers.GetProjectDataUpdater(db))
+	kanbanHandler := newHandler(handlers.GetProjectRequestHandler(db))
+
+	http.Handle("/kanban", kanbanHandler)
+	http.Handle("/data", updateDataHandler)
 
 	cardCreateHandler := newHandler(handlers.GetCardCreator(db))
 	cardUpdateHandler := newHandler(handlers.GetCardUpdater(db))
