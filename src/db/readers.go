@@ -103,9 +103,7 @@ func GetCard(agent *Agent, id string) (*types.Card, error) {
 
 func GetCards(db *sql.DB, id string) ([]types.Card, error) {
 	var outputCards []types.Card
-	columns, values, err := readMultiRow(CreateAgentDB(db), id, `select Cards.* from Columns join
-Cards on Cards.column_id = Columns.id
-where Columns.id=?;`)
+	columns, values, err := readMultiRow(CreateAgentDB(db), id, `select * from Cards where column_id=?;`)
 	for i := range values {
 		rowLength := len(values[i])
 		var newCard types.Card
@@ -225,9 +223,7 @@ func GetColumn(agent *Agent, id string) (*types.Column, error) {
 }
 func readColumns(agent *Agent, projectId string) ([]types.Column, error) {
 	var outputColumns []types.Column
-	columns, values, err := readMultiRow(agent, projectId, `select Columns.* from Projects join
-Columns on Columns.project_id = Projects.id
-where Projects.id=?;`)
+	columns, values, err := readMultiRow(agent, projectId, `SELECT * FROM Columns WHERE project_id=?;`)
 	for i := range values {
 		rowLength := len(values[i])
 		var newColumn types.Column
