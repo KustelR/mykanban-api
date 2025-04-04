@@ -44,11 +44,12 @@ func GetTagsByCard(db *sql.DB, id string) ([]types.Tag, error) {
 CardsTags on Tags.id = CardsTags.tag_id join
 Cards on Cards.id = CardsTags.card_id
 where Cards.id=?;`)
-	for i := range values {
-		rowLength := len(values[i])
+	for i := range *values {
+		row := (*values)[i]
+		rowLength := len(row)
 		var newTag types.Tag
 		for j := 0; j < rowLength; j++ {
-			col := values[i][j]
+			col := row[j]
 			switch columns[j] {
 			case "id":
 				newTag.Id = string(col)
@@ -69,14 +70,15 @@ func GetTagsByProject(db *sql.DB, id string) ([]types.Tag, error) {
 	if err != nil {
 		return nil, err
 	}
-	for i := range values {
-		rowLength := len(values[i])
+	for i := range *values {
+		row := (*values)[i]
+		rowLength := len(row)
 		var newTag types.Tag
-		if values[i] == nil {
+		if (*values)[i] == nil {
 			continue
 		}
 		for j := 0; j < rowLength; j++ {
-			col := values[i][j]
+			col := row[j]
 			switch columns[j] {
 			case "id":
 				newTag.Id = string(col)

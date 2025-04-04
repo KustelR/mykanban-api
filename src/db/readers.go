@@ -37,7 +37,7 @@ func readOneRow(agent *Agent, id string, query string) ([]string, []sql.RawBytes
 	return columns, values, nil
 }
 
-func readMultiRow(agent *Agent, id string, query string) ([]string, [][]sql.RawBytes, error) {
+func readMultiRow(agent *Agent, id string, query string) ([]string, *[][]sql.RawBytes, error) {
 	var err error
 	stmt, err := agent.Prepare(query)
 	if err != nil {
@@ -53,25 +53,27 @@ func readMultiRow(agent *Agent, id string, query string) ([]string, [][]sql.RawB
 	if err != nil {
 		return nil, nil, err
 	}
-	output := make([][]sql.RawBytes, len(columns))
+	output := make([][]sql.RawBytes, 0)
 
 	for rows.Next() {
 		values := make([]sql.RawBytes, len(columns))
-		scanArgs := make([]interface{}, len(values))
+		dest := make([]any, len(values))
 		for i := range values {
-			scanArgs[i] = &values[i]
+			dest[i] = &values[i]
 		}
-		err = rows.Scan(scanArgs...)
-		output = append(output, values)
+		err = rows.Scan(dest...)
+
+		if err != nil {
+			return nil, nil, err
+		}
+
+		output = copyAndAppend(output, values)
 	}
-	if err != nil {
-		return nil, nil, err
-	}
+
 	if len(columns) == 0 {
 		return nil, nil, fmt.Errorf(" id: %s was not found", id)
 	}
-
-	return columns, output, nil
+	return columns, &output, nil
 }
 
 func GetCard(agent *Agent, id string) (*types.Card, error) {
@@ -104,14 +106,16 @@ func GetCard(agent *Agent, id string) (*types.Card, error) {
 func GetCards(db *sql.DB, id string) ([]types.Card, error) {
 	var outputCards []types.Card
 	columns, values, err := readMultiRow(CreateAgentDB(db), id, `select * from Cards where column_id=?;`)
-	for i := range values {
-		rowLength := len(values[i])
+
+	for i := range *values {
+		row := (*values)[i]
+		rowLength := len(row)
 		var newCard types.Card
-		if values[i] == nil {
+		if row == nil {
 			continue
 		}
 		for j := 0; j < rowLength; j++ {
-			col := values[i][j]
+			col := row[j]
 			switch columns[j] {
 			case "id":
 				newCard.Id = string(col)
@@ -224,14 +228,15 @@ func GetColumn(agent *Agent, id string) (*types.Column, error) {
 func readColumns(agent *Agent, projectId string) ([]types.Column, error) {
 	var outputColumns []types.Column
 	columns, values, err := readMultiRow(agent, projectId, `SELECT * FROM Columns WHERE project_id=?;`)
-	for i := range values {
-		rowLength := len(values[i])
+	for i := range *values {
+		row := (*values)[i]
+		rowLength := len(row)
 		var newColumn types.Column
-		if values[i] == nil {
+		if row == nil {
 			continue
 		}
 		for j := 0; j < rowLength; j++ {
-			col := values[i][j]
+			col := row[j]
 			switch columns[j] {
 			case "id":
 				newColumn.Id = string(col)
@@ -250,4 +255,17 @@ func readColumns(agent *Agent, projectId string) ([]types.Column, error) {
 		outputColumns = append(outputColumns, newColumn)
 	}
 	return outputColumns, err
+}
+
+func copyAndAppend(sl [][]sql.RawBytes, item []sql.RawBytes) [][]sql.RawBytes {
+	newSlice := make([][]sql.RawBytes, len(sl)+1)
+	copy(newSlice, sl)
+	itemCopy := make([]sql.RawBytes, len(item))
+	for i := range itemCopy {
+		entryCopy := make(sql.RawBytes, len(item[i]))
+		copy(entryCopy, item[i])
+		itemCopy[i] = entryCopy
+	}
+	newSlice[len(newSlice)-1] = itemCopy
+	return newSlice
 }
