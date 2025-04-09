@@ -65,7 +65,10 @@ func AddCardTags(agent *Agent, cardId string, tagId string) error {
 	if err != nil {
 		return err
 	}
-	stmt.Exec(cardId, tagId)
+	_, err = stmt.Exec(cardId, tagId)
+	if err != nil {
+		return err
+	}
 	stmt.Close()
 	return nil
 }
