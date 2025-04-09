@@ -164,13 +164,18 @@ func GetTagCreator(db *sql.DB) http.HandlerFunc {
 		}
 		tags := make([]types.TagJson, 0)
 		tags = append(tags, reqData)
-		err = db_driver.AddTags(db_driver.CreateAgentDB(db), id, &tags)
+		newTags, err := db_driver.AddTags(db_driver.CreateAgentDB(db), id, &tags)
 		if err != nil {
 			badResponse(w, r, err)
 			return
 		}
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprint(w, "Updated succesfully")
+		data, err := json.Marshal(newTags)
+		if err != nil {
+			badResponse(w, r, err)
+			return
+		}
+		fmt.Fprint(w, string(data))
 		log.Printf("[%s] Updated succesfully", id)
 	}
 	return handler

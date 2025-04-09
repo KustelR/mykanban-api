@@ -36,7 +36,7 @@ func UpdateProject(db *sql.DB, ctx context.Context, id string, project *types.Ka
 		tx.Rollback()
 		return err
 	}
-	err = AddTags(agent, id, &project.Tags)
+	_, err = AddTags(agent, id, &project.Tags)
 	if err != nil {
 		tx.Rollback()
 		return err
@@ -79,7 +79,7 @@ func PostProject(db *sql.DB, id string, projectData *types.KanbanJson) error {
 	if rows == 0 {
 		return NoEffect{}
 	}
-	err = AddTags(agent, id, &projectData.Tags)
+	_, err = AddTags(agent, id, &projectData.Tags)
 	if err != nil {
 		return err
 	}

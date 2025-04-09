@@ -3,9 +3,11 @@ package db_driver
 import (
 	"database/sql"
 	"types"
+
+	"github.com/google/uuid"
 )
 
-func AddTags(agent *Agent, projectId string, tags *[]types.TagJson) error {
+func AddTags(agent *Agent, projectId string, tags *[]types.TagJson) ([]types.TagJson, error) {
 	stmt, err := agent.Prepare(`
 	insert Tags (
     id,
@@ -22,20 +24,24 @@ func AddTags(agent *Agent, projectId string, tags *[]types.TagJson) error {
  name=name,
  color=color;`)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer stmt.Close()
 	var tagErr error
-	for _, tag := range *tags {
+	createdTags := make([]types.TagJson, len(*tags))
+	for idx, tag := range *tags {
+		newTag := tag
+		newTag.Id = uuid.New().String()[:30]
+		createdTags[idx] = newTag
 		_, err := stmt.Exec(tag.Id, projectId, tag.Name, tag.Color)
 		if err != nil {
 			tagErr = err
 		}
 	}
 	if tagErr != nil {
-		return tagErr
+		return nil, tagErr
 	}
-	return nil
+	return createdTags, nil
 }
 
 func GetTagsByCard(db *sql.DB, id string) ([]types.Tag, error) {
