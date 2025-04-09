@@ -23,3 +23,11 @@ func (a *Agent) Prepare(query string) (*sql.Stmt, error) {
 		return a.tx.Prepare(query)
 	}
 }
+
+func (a *Agent) Exec(query string, args ...any) (sql.Result, error) {
+	if a.db != nil {
+		return a.db.Exec(query, args)
+	} else {
+		return a.tx.Exec(query, args)
+	}
+}
