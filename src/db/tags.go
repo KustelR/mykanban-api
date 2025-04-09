@@ -33,7 +33,7 @@ func AddTags(agent *Agent, projectId string, tags *[]types.TagJson) ([]types.Tag
 		newTag := tag
 		newTag.Id = uuid.New().String()[:30]
 		createdTags[idx] = newTag
-		_, err := stmt.Exec(tag.Id, projectId, tag.Name, tag.Color)
+		_, err := stmt.Exec(newTag.Id, projectId, tag.Name, tag.Color)
 		if err != nil {
 			tagErr = err
 		}
