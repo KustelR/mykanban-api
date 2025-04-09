@@ -229,13 +229,20 @@ func GetCardCreator(db *sql.DB) http.HandlerFunc {
 				return
 			}
 		}
-		_, err = db.Exec("CALL add_card(?, ?, ?, ?, ?);", reqData.ColumnId, reqData.Id, reqData.Name, reqData.Description, reqData.Order)
+		cards := []types.CardJson{reqData}
+		newCards, err := db_driver.AddCards(db_driver.CreateAgentDB(db), reqData.ColumnId, &cards)
 		if err != nil {
 			badResponse(w, r, err)
 			return
 		}
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprint(w, "Created succesfully")
+
+		data, err := json.Marshal(newCards)
+		if err != nil {
+			badResponse(w, r, err)
+			return
+		}
+		fmt.Fprint(w, string(data))
 		log.Printf("[POST] Created succesfully\n")
 	}
 	return handler

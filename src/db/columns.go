@@ -77,7 +77,7 @@ out:
 			colErr = err
 			break out
 		}
-		colErr = addCards(agent, col.Id, &col.Cards)
+		_, colErr = AddCards(agent, col.Id, &col.Cards)
 		if colErr != nil {
 			break out
 		}

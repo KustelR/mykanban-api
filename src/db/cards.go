@@ -5,7 +5,10 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strconv"
 	"types"
+
+	"github.com/google/uuid"
 )
 
 func UpdateCard(db *sql.DB, card *types.CardJson) error {
@@ -124,12 +127,12 @@ func DeleteCard(db *sql.DB, id string) error {
 	return nil
 }
 
-func addCards(agent *Agent, columnId string, cards *[]types.CardJson) error {
+func AddCards(agent *Agent, columnId string, cards *[]types.CardJson) ([]types.CardJson, error) {
 	stmt, err := agent.Prepare(`
 	CALL add_card(?, ?, ?, ?, ?)
 `)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer stmt.Close()
 	stmtRT, err := agent.Prepare(`select * from CardsTags 
@@ -137,13 +140,34 @@ func addCards(agent *Agent, columnId string, cards *[]types.CardJson) error {
 	card_id = ? AND # card id
 	tag_id = ? # tag id`)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer stmtRT.Close()
 	var cardErr error
+	newCards := make([]types.CardJson, len(*cards))
 out:
-	for _, card := range *cards {
-		_, err := stmt.Exec(columnId, card.Id, card.Name, card.Description, card.Order)
+	for idx, card := range *cards {
+		id := uuid.New().String()[:30]
+		changedCard := card
+		changedCard.Id = id
+
+		cols, data, err := readOneRow(agent, card.ColumnId, "SELECT max(draw_order) FROM Cards WHERE column_id= ?;")
+		if err != nil {
+			cardErr = err
+			break out
+		}
+		for idx, item := range data {
+			if cols[idx] == "max(draw_order)" {
+				lastOrder, err := strconv.Atoi(string(item[idx]))
+				if err != nil {
+					cardErr = err
+					break out
+				}
+				changedCard.Order = lastOrder + 1
+			}
+		}
+
+		_, err = stmt.Exec(columnId, changedCard.Id, changedCard.Name, changedCard.Description, changedCard.Order)
 		if err != nil {
 			cardErr = err
 			break out
@@ -161,9 +185,10 @@ out:
 
 			}
 		}
+		newCards[idx] = changedCard
 	}
 	if cardErr != nil {
-		return cardErr
+		return nil, cardErr
 	}
-	return nil
+	return newCards, nil
 }
