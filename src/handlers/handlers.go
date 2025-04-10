@@ -424,13 +424,18 @@ func GetColumnCreator(db *sql.DB) http.HandlerFunc {
 		}
 		columns := make([]types.ColumnJson, 0)
 		columns = append(columns, reqData)
-		err = db_driver.AddColumns(db_driver.CreateAgentDB(db), *id, &columns)
+		newColumns, err := db_driver.AddColumns(db_driver.CreateAgentDB(db), *id, &columns)
+		if err != nil {
+			badResponse(w, r, err)
+			return
+		}
+		data, err := json.Marshal(newColumns)
 		if err != nil {
 			badResponse(w, r, err)
 			return
 		}
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprint(w, "Updated succesfully")
+		fmt.Fprint(w, string(data))
 		log.Printf("[%s] Updated succesfully", *id)
 	}
 	return handler

@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"fmt"
 	"types"
+
+	"github.com/google/uuid"
 )
 
 func UpdateColumnData(db *sql.DB, column *types.Column) error {
@@ -63,27 +65,48 @@ func DeleteColumn(db *sql.DB, id string) error {
 	return nil
 }
 
-func AddColumns(agent *Agent, projectId string, columns *[]types.ColumnJson) error {
+func AddColumns(agent *Agent, projectId string, columns *[]types.ColumnJson) ([]types.ColumnJson, error) {
 	stmt, err := agent.Prepare(`CALL add_column(?, ?, ?, ?)`)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer stmt.Close()
 	var colErr error
+
+	newCols := make([]types.ColumnJson, len(*columns))
+
 out:
-	for _, col := range *columns {
-		_, err := stmt.Exec(projectId, col.Id, col.Name, col.Order)
+	for idx, col := range *columns {
+		id := uuid.New().String()[:30]
+		changedCol := col
+		changedCol.Id = id
+
+		dbColNames, data, err := readOneRow(agent, projectId, "SELECT max(draw_order) FROM Columns WHERE project_id= ?;")
 		if err != nil {
 			colErr = err
 			break out
 		}
-		_, colErr = AddCards(agent, col.Id, &col.Cards)
+		drawOrder, err := GetMaxDrawOrder(dbColNames, data)
+		if err != nil {
+			colErr = err
+			break out
+		}
+		changedCol.Order = drawOrder + 1
+		_, err = stmt.Exec(projectId, changedCol.Id, changedCol.Name, changedCol.Order)
+		if err != nil {
+			colErr = err
+			break out
+		}
+		cards, colErr := AddCards(agent, col.Id, &col.Cards)
 		if colErr != nil {
 			break out
 		}
+		changedCol.Cards = cards
+		newCols[idx] = changedCol
+
 	}
 	if colErr != nil {
-		return colErr
+		return nil, colErr
 	}
-	return nil
+	return newCols, nil
 }

@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"strconv"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -47,4 +48,20 @@ type NotFoundError struct {
 
 func (e NotFoundError) Error() string {
 	return fmt.Sprintf("%s was not found", e.thing)
+}
+
+func GetMaxDrawOrder(cols []string, data []sql.RawBytes) (int, error) {
+	for idx, item := range data {
+		if len(item) <= 0 {
+			return 0, nil
+		}
+		if cols[idx] == "max(draw_order)" {
+			lastOrder, err := strconv.Atoi(string(item))
+			if err != nil {
+				return -1, err
+			}
+			return lastOrder, nil
+		}
+	}
+	return -1, fmt.Errorf("provided query does not contained draw_order")
 }

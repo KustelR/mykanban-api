@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"strconv"
 	"types"
 
 	"github.com/google/uuid"
@@ -156,17 +155,12 @@ out:
 			cardErr = err
 			break out
 		}
-		for idx, item := range data {
-			if cols[idx] == "max(draw_order)" {
-				lastOrder, err := strconv.Atoi(string(item[idx]))
-				if err != nil {
-					cardErr = err
-					break out
-				}
-				changedCard.Order = lastOrder + 1
-			}
+		drawOrder, err := GetMaxDrawOrder(cols, data)
+		if err != nil {
+			cardErr = err
+			break out
 		}
-
+		changedCard.Order = drawOrder + 1
 		_, err = stmt.Exec(columnId, changedCard.Id, changedCard.Name, changedCard.Description, changedCard.Order)
 		if err != nil {
 			cardErr = err
