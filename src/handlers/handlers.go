@@ -265,7 +265,7 @@ func GetCardUpdater(db *sql.DB) http.HandlerFunc {
 				return
 			}
 		}
-		db_driver.UpdateCard(db, &reqData)
+		err = db_driver.UpdateCard(db, &reqData)
 		if err != nil {
 			badResponse(w, r, err)
 			return

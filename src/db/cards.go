@@ -15,7 +15,7 @@ func UpdateCard(db *sql.DB, card *types.CardJson) error {
 	if err != nil {
 		return err
 	}
-	stmt, err := agent.Prepare("CALL update_card(?, ?, ?, ?, ?);")
+	stmt, err := agent.Prepare("CALL update_card(?, ?, ?, ?, ?, ?);")
 	if err != nil {
 		tx.Rollback()
 		return err
@@ -34,14 +34,21 @@ func UpdateCard(db *sql.DB, card *types.CardJson) error {
 			return err
 		}
 		defer stmt.Close()
-		fmt.Println(oldCard, card.ColumnId)
 		_, err = stmtPop.Exec(oldCard.ColumnId, oldCard.Order)
 		if err != nil {
 			tx.Rollback()
 			return err
 		}
 	}
-	_, err = stmt.Exec(card.Id, card.ColumnId, card.Name, card.Description, card.Order)
+	dbColNames, data, err := readOneRow(agent, card.ColumnId, "SELECT max(draw_order) FROM cards WHERE column_id = ?;")
+	if err != nil {
+		return err
+	}
+	drawOrder, err := GetMaxDrawOrder(dbColNames, data)
+	if err != nil {
+		return err
+	}
+	_, err = stmt.Exec(card.Id, card.ColumnId, card.Name, card.Description, "placeholder", drawOrder)
 	if err != nil {
 		tx.Rollback()
 		return err
