@@ -3,6 +3,7 @@ go 1.21
 use ./src/db
 
 use ./src/types
+use ./src/utils
 
 use (
 	.
