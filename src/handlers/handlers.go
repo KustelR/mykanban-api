@@ -306,38 +306,6 @@ func GetCardDeleter(db *sql.DB) http.HandlerFunc {
 	}
 	return handler
 }
-
-func GetCardForcePopOrder(db *sql.DB) http.HandlerFunc {
-	handler := func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPatch {
-			badMethod(w, r, []string{"patch"})
-			return
-		}
-		log.Printf("[%s] [PATCH] Received a pop card order request\n", r.Host)
-		decoder := json.NewDecoder(r.Body)
-		var reqData struct {
-			Order    int    `json:"order"`
-			ColumnId string `json:"columnId"`
-		}
-		err := decoder.Decode(&reqData)
-		if err != nil {
-			if err != io.EOF {
-				badRequest(w, r, err)
-				return
-			}
-		}
-		_, err = db.Exec("CALL pop_card_reorder(?, ?)", reqData.ColumnId, reqData.Order)
-		if err != nil {
-			badResponse(w, r, err)
-			return
-		}
-		w.WriteHeader(http.StatusOK)
-		fmt.Fprint(w, "Updated succesfully")
-		log.Printf("Update succesfully")
-	}
-	return handler
-}
-
 func GetColumnDataUpdater(db *sql.DB) http.HandlerFunc {
 
 	handler := func(w http.ResponseWriter, r *http.Request) {
