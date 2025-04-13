@@ -54,39 +54,45 @@ func UpdateProject(db *sql.DB, ctx context.Context, id string, project *types.Ka
 	return nil
 }
 
-func PostProject(db *sql.DB, id string, projectData *types.KanbanJson) error {
-	agent := CreateAgentDB(db)
-	stmt, err := agent.Prepare(`
-	insert Projects (
-    name,
-    id    
-) values (
- ?, # name
- ? # id
-);`)
+func CreateProject(db *sql.DB, id string, projectData *types.KanbanJson) error {
+	transaction, err := db.BeginTx(context.Background(), nil)
 	if err != nil {
 		return err
 	}
-	defer stmt.Close()
-	res, err := stmt.Exec(projectData.Name, id)
+	agent := CreateAgentTX(transaction)
+	stmt, err := agent.Prepare(`CALL create_project(?, ?, ?);`)
 	if err != nil {
+		transaction.Rollback()
+		return err
+	}
+	defer stmt.Close()
+	res, err := stmt.Exec(id, projectData.Name, "placeholder")
+	if err != nil {
+		transaction.Rollback()
 		return err
 	}
 	rows, err := res.RowsAffected()
 	if err != nil {
+		transaction.Rollback()
 		return err
 	}
 	if rows == 0 {
+		transaction.Rollback()
 		return NoEffect{}
 	}
-	_, err = AddTags(agent, id, &projectData.Tags)
+	_, err = CreateTag(agent, id, &projectData.Tags)
+	if err != nil {
+		transaction.Rollback()
+		return err
+	}
+	_, err = CreateColumns(agent, id, &projectData.Columns)
+	if err != nil {
+		transaction.Rollback()
+		return err
+	}
+	err = transaction.Commit()
 	if err != nil {
 		return err
 	}
-	_, err = AddColumns(agent, id, &projectData.Columns)
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
