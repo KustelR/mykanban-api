@@ -6,8 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"types"
-
-	"github.com/google/uuid"
+	"utils"
 )
 
 func UpdateCard(db *sql.DB, card *types.CardJson) error {
@@ -128,8 +127,7 @@ func DeleteCard(db *sql.DB, id string) error {
 
 func CreateCards(agent *Agent, columnId string, cards *[]types.CardJson) ([]types.CardJson, error) {
 	stmt, err := agent.Prepare(`
-	CALL create_card(?, ?, ?, ?, ?)
-`)
+	CALL create_card(?, ?, ?, ?, ?, ?);`)
 	if err != nil {
 		return nil, err
 	}
@@ -146,7 +144,7 @@ func CreateCards(agent *Agent, columnId string, cards *[]types.CardJson) ([]type
 	newCards := make([]types.CardJson, len(*cards))
 out:
 	for idx, card := range *cards {
-		id := uuid.New().String()[:30]
+		id := utils.GetUUID()
 		changedCard := card
 		changedCard.Id = id
 
@@ -171,8 +169,12 @@ out:
 			err := row.Scan()
 			if err != nil {
 				if errors.Is(err, sql.ErrNoRows) {
-					CreateCardTags(agent, card.Id, tagId)
+					err = CreateCardTags(agent, id, tagId)
 				} else {
+					cardErr = err
+					break out
+				}
+				if err != nil {
 					cardErr = err
 					break out
 				}

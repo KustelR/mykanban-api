@@ -164,7 +164,7 @@ func GetTagCreator(db *sql.DB) http.HandlerFunc {
 		}
 		tags := make([]types.TagJson, 0)
 		tags = append(tags, reqData)
-		newTags, err := db_driver.CreateTag(db_driver.CreateAgentDB(db), id, &tags)
+		newTags, err := db_driver.CreateTags(db_driver.CreateAgentDB(db), id, &tags)
 		if err != nil {
 			badResponse(w, r, err)
 			return
@@ -392,7 +392,7 @@ func GetColumnCreator(db *sql.DB) http.HandlerFunc {
 		}
 		columns := make([]types.ColumnJson, 0)
 		columns = append(columns, reqData)
-		newColumns, err := db_driver.CreateColumns(db_driver.CreateAgentDB(db), *id, &columns)
+		newColumns, err := db_driver.CreateColumns(db_driver.CreateAgentDB(db), *id, columns)
 		if err != nil {
 			badResponse(w, r, err)
 			return

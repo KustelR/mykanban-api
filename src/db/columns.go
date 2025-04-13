@@ -62,7 +62,7 @@ func DeleteColumn(db *sql.DB, id string) error {
 	return nil
 }
 
-func CreateColumns(agent *Agent, projectId string, columns *[]types.ColumnJson) ([]types.ColumnJson, error) {
+func CreateColumns(agent *Agent, projectId string, columns []types.ColumnJson) ([]types.ColumnJson, error) {
 	stmt, err := agent.Prepare(`CALL create_column(?, ?, ?, ?, ?)`)
 	if err != nil {
 		return nil, err
@@ -70,10 +70,10 @@ func CreateColumns(agent *Agent, projectId string, columns *[]types.ColumnJson) 
 	defer stmt.Close()
 	var colErr error
 
-	newCols := make([]types.ColumnJson, len(*columns))
+	newCols := make([]types.ColumnJson, len(columns))
 
 out:
-	for idx, col := range *columns {
+	for idx, col := range columns {
 		id := utils.GetUUID()
 		changedCol := col
 		changedCol.Id = id
@@ -89,13 +89,14 @@ out:
 			break out
 		}
 		changedCol.Order = drawOrder + 1
-		_, err = stmt.Exec(projectId, changedCol.Id, changedCol.Name, changedCol.Order, "placeholder")
+		_, err = stmt.Exec(projectId, id, changedCol.Name, changedCol.Order, "placeholder")
 		if err != nil {
 			colErr = err
 			break out
 		}
-		cards, colErr := CreateCards(agent, col.Id, &col.Cards)
-		if colErr != nil {
+		cards, err := CreateCards(agent, id, &col.Cards)
+		if err != nil {
+			colErr = err
 			break out
 		}
 		changedCol.Cards = cards

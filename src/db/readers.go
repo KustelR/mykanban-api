@@ -103,9 +103,9 @@ func GetCard(agent *Agent, id string) (*types.Card, error) {
 	return &card, nil
 }
 
-func GetCards(db *sql.DB, id string) ([]types.Card, error) {
+func GetCardsByColumnId(db *sql.DB, id string) ([]types.Card, error) {
 	var outputCards []types.Card
-	columns, values, err := readMultiRow(CreateAgentDB(db), id, `select * from Cards where column_id=?;`)
+	columns, values, err := readMultiRow(CreateAgentDB(db), id, `CALL read_cards_by_column_id(?);`)
 
 	for i := range values {
 		row := values[i]
@@ -133,88 +133,44 @@ func GetCards(db *sql.DB, id string) ([]types.Card, error) {
 				newCard.Description = string(col)
 			}
 		}
+
+		meta, err := readMeta(columns, row)
+		if err != nil {
+			return nil, err
+		}
+		newCard.Created_At = meta.Created_at
+		newCard.Updated_At = meta.Updated_at
+		newCard.Created_By = meta.Created_by
+		newCard.Updated_By = meta.Updated_by
 		outputCards = append(outputCards, newCard)
 	}
 	return outputCards, err
 }
 
-func GetProject(db *sql.DB, id string) (*types.KanbanJson, error) {
-	var output types.KanbanJson
-	project, err := readProject(db, id)
-	if err != nil {
-		return nil, err
-	}
-	output = *project.Json()
-	projectTags, err := GetTagsByProject(db, id)
-	if err != nil {
-		return nil, err
-	}
-	for _, tag := range projectTags {
-		outputTag := tag.Json()
-		output.Tags = append(output.Tags, *outputTag)
-	}
-	columns, err := readColumns(CreateAgentDB(db), id)
-	if err != nil {
-		return nil, err
-	}
-	for _, col := range columns {
-		outputCol := col.Json()
-		var outputCards []types.CardJson
-		cards, err := GetCards(db, col.Id)
-
-		if err != nil {
-			return nil, err
-		}
-		for _, card := range cards {
-			outputCard := card.Json()
-
-			tags, err := GetTagsByCard(db, card.Id)
-			if err != nil {
-				return nil, err
-			}
-			for _, tag := range tags {
-				if tag.Id != "" {
-					outputCard.TagIds = append(outputCard.TagIds, tag.Id)
-				}
-			}
-
-			outputCards = append(outputCards, *outputCard)
-		}
-		outputCol.Cards = outputCards
-		output.Columns = append(output.Columns, *outputCol)
-	}
-	return &output, nil
-}
-
-func readProject(db *sql.DB, id string) (*types.Kanban, error) {
+func ReadProject(db *sql.DB, id string) (*types.Kanban, error) {
 	agent := CreateAgentDB(db)
 	var project types.Kanban
 	columns, values, err := readOneRow(agent, id, "CALL read_project(?);")
+	if err != nil {
+		return nil, err
+	}
 	for i, col := range values {
 		switch columns[i] {
 		case "id":
 			project.Id = string(col)
 		case "name":
 			project.Name = string(col)
-		case "created_at":
-			data, err := strconv.Atoi(string(col))
-			if err != nil {
-				return nil, err
-			}
-			project.Created_At = data
-		case "updated_at":
-			data, err := strconv.Atoi(string(col))
-			if err != nil {
-				return nil, err
-			}
-			project.Updated_At = data
-		case "created_by":
-			project.Created_By = string(col)
-		case "updated_by":
-			project.Updated_By = string(col)
 		}
 	}
-	return &project, err
+	meta, err := readMeta(columns, values)
+	if err != nil {
+		return nil, err
+	}
+	project.Created_At = meta.Created_at
+	project.Updated_At = meta.Updated_at
+	project.Created_By = meta.Created_by
+	project.Updated_By = meta.Updated_by
+	return &project, nil
 }
 
 func GetColumn(agent *Agent, id string) (*types.Column, error) {
@@ -241,9 +197,9 @@ func GetColumn(agent *Agent, id string) (*types.Column, error) {
 	}
 	return &column, nil
 }
-func readColumns(agent *Agent, projectId string) ([]types.Column, error) {
+func ReadColumns(agent *Agent, projectId string) ([]types.Column, error) {
 	var outputColumns []types.Column
-	columns, values, err := readMultiRow(agent, projectId, `SELECT * FROM ProjectColumns WHERE project_id=?;`)
+	columns, values, err := readMultiRow(agent, projectId, `CALL read_columns_by_project_id(?);`)
 	for i := range values {
 		row := values[i]
 		rowLength := len(row)
@@ -268,6 +224,14 @@ func readColumns(agent *Agent, projectId string) ([]types.Column, error) {
 				newColumn.Order = val
 			}
 		}
+		meta, err := readMeta(columns, row)
+		if err != nil {
+			return nil, err
+		}
+		newColumn.Created_At = meta.Created_at
+		newColumn.Updated_At = meta.Updated_at
+		newColumn.Created_By = meta.Created_by
+		newColumn.Updated_By = meta.Updated_by
 		outputColumns = append(outputColumns, newColumn)
 	}
 	return outputColumns, err
@@ -284,4 +248,106 @@ func copyAndAppend(sl [][]sql.RawBytes, item []sql.RawBytes) [][]sql.RawBytes {
 	}
 	newSlice[len(newSlice)-1] = itemCopy
 	return newSlice
+}
+
+type Metadata struct {
+	Created_at int
+	Updated_at int
+	Created_by string
+	Updated_by string
+}
+
+func readMeta(columns []string, data []sql.RawBytes) (*Metadata, error) {
+	var result Metadata
+	for idx, val := range data {
+		switch columns[idx] {
+		case "created_at":
+			data, err := strconv.Atoi(string(val))
+			if err != nil {
+				return nil, err
+			}
+			result.Created_at = data
+		case "updated_at":
+			data, err := strconv.Atoi(string(val))
+			if err != nil {
+				return nil, err
+			}
+			result.Updated_at = data
+		case "created_by":
+			result.Created_by = string(val)
+		case "updated_by":
+			result.Updated_by = string(val)
+		}
+	}
+	return &result, nil
+}
+
+func GetTagsByCard(db *sql.DB, id string) ([]types.Tag, error) {
+	var outputTags []types.Tag
+	columns, values, err := readMultiRow(CreateAgentDB(db), id, `CALL read_tags_by_card_id(?);`)
+	for i := range values {
+		row := values[i]
+		rowLength := len(row)
+		var newTag types.Tag
+		for j := 0; j < rowLength; j++ {
+			col := row[j]
+			switch columns[j] {
+			case "id":
+				newTag.Id = string(col)
+			case "name":
+				newTag.Name = string(col)
+			case "color":
+				newTag.Color = string(col)
+			case "project_id":
+				newTag.ProjectId = string(col)
+			}
+		}
+		meta, err := readMeta(columns, row)
+		if err != nil {
+			return nil, err
+		}
+		newTag.Created_At = meta.Created_at
+		newTag.Updated_At = meta.Updated_at
+		newTag.Created_By = meta.Created_by
+		newTag.Updated_By = meta.Updated_by
+		outputTags = append(outputTags, newTag)
+	}
+	return outputTags, err
+}
+
+func GetTagsByProject(db *sql.DB, id string) ([]types.Tag, error) {
+	var outputTags []types.Tag
+	columns, values, err := readMultiRow(CreateAgentDB(db), id, `CALL read_tags_by_project_id(?);`)
+	if err != nil {
+		return nil, err
+	}
+	for i := range values {
+		row := values[i]
+		rowLength := len(row)
+		var newTag types.Tag
+		if values[i] == nil {
+			continue
+		}
+		for j := 0; j < rowLength; j++ {
+			col := row[j]
+			switch columns[j] {
+			case "id":
+				newTag.Id = string(col)
+			case "name":
+				newTag.Name = string(col)
+			case "color":
+				newTag.Color = string(col)
+			}
+		}
+		meta, err := readMeta(columns, row)
+		if err != nil {
+			return nil, err
+		}
+		newTag.Created_At = meta.Created_at
+		newTag.Updated_At = meta.Updated_at
+		newTag.Created_By = meta.Created_by
+		newTag.Updated_By = meta.Updated_by
+		outputTags = append(outputTags, newTag)
+	}
+	return outputTags, err
 }

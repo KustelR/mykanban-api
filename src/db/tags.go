@@ -1,13 +1,11 @@
 package db_driver
 
 import (
-	"database/sql"
 	"types"
-
-	"github.com/google/uuid"
+	"utils"
 )
 
-func CreateTag(agent *Agent, projectId string, tags *[]types.TagJson) ([]types.TagJson, error) {
+func CreateTags(agent *Agent, projectId string, tags *[]types.TagJson) ([]types.TagJson, error) {
 	stmt, err := agent.Prepare(`CALL create_tag(?, ?, ?, ?, ?);`)
 	if err != nil {
 		return nil, err
@@ -17,9 +15,9 @@ func CreateTag(agent *Agent, projectId string, tags *[]types.TagJson) ([]types.T
 	createdTags := make([]types.TagJson, len(*tags))
 	for idx, tag := range *tags {
 		newTag := tag
-		newTag.Id = uuid.New().String()[:30]
+		newTag.Id = utils.GetUUID()
 		createdTags[idx] = newTag
-		_, err := stmt.Exec(newTag.Id, projectId, tag.Name, tag.Color, "placeholder")
+		_, err := stmt.Exec(projectId, newTag.Id, tag.Name, tag.Color, "placeholder")
 		if err != nil {
 			tagErr = err
 		}
@@ -28,61 +26,6 @@ func CreateTag(agent *Agent, projectId string, tags *[]types.TagJson) ([]types.T
 		return nil, tagErr
 	}
 	return createdTags, nil
-}
-
-func GetTagsByCard(db *sql.DB, id string) ([]types.Tag, error) {
-	var outputTags []types.Tag
-	columns, values, err := readMultiRow(CreateAgentDB(db), id, `select Tags.* from Tags join
-CardsTags on Tags.id = CardsTags.tag_id join
-Cards on Cards.id = CardsTags.card_id
-where Cards.id=?;`)
-	for i := range values {
-		row := values[i]
-		rowLength := len(row)
-		var newTag types.Tag
-		for j := 0; j < rowLength; j++ {
-			col := row[j]
-			switch columns[j] {
-			case "id":
-				newTag.Id = string(col)
-			case "name":
-				newTag.Name = string(col)
-			case "color":
-				newTag.Color = string(col)
-			}
-		}
-		outputTags = append(outputTags, newTag)
-	}
-	return outputTags, err
-}
-
-func GetTagsByProject(db *sql.DB, id string) ([]types.Tag, error) {
-	var outputTags []types.Tag
-	columns, values, err := readMultiRow(CreateAgentDB(db), id, `select * from Tags where project_id=?;`)
-	if err != nil {
-		return nil, err
-	}
-	for i := range values {
-		row := values[i]
-		rowLength := len(row)
-		var newTag types.Tag
-		if values[i] == nil {
-			continue
-		}
-		for j := 0; j < rowLength; j++ {
-			col := row[j]
-			switch columns[j] {
-			case "id":
-				newTag.Id = string(col)
-			case "name":
-				newTag.Name = string(col)
-			case "color":
-				newTag.Color = string(col)
-			}
-		}
-		outputTags = append(outputTags, newTag)
-	}
-	return outputTags, err
 }
 
 type NoEffect struct{}
