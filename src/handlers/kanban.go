@@ -99,7 +99,7 @@ func GetProjectDataUpdater(db *sql.DB) http.HandlerFunc {
 				return
 			}
 		}
-		_, err = db.Exec("CALL update_project_data(?, ?)", id, reqData.Name, "placeholder")
+		_, err = db.Exec("CALL update_project_data(?, ?, ?)", id, reqData.Name, "placeholder")
 		if err != nil {
 			badResponse(w, r, err)
 			return
