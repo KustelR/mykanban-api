@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"database/sql"
 	"db_driver"
 	"encoding/json"
@@ -77,35 +76,6 @@ func deleteProject(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	log.Printf("[%s] Deleted project\n", id)
 }
 
-func updateProject(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	params, _ := url.ParseQuery(r.URL.RawQuery)
-	id := params.Get("id")
-	log.Printf("[%s] Received a put request from %s\n", id, r.Host)
-	decoder := json.NewDecoder(r.Body)
-	var reqData types.KanbanJson
-	err := decoder.Decode(&reqData)
-	if err != nil {
-		if err != io.EOF {
-			badRequest(w, r, err)
-			return
-		}
-	}
-	err = db_driver.UpdateProject(db, context.Background(), id, &reqData)
-	if err != nil {
-		if (err == db_driver.NoEffect{}) {
-			w.WriteHeader(http.StatusNotFound)
-			fmt.Fprintf(w, "Project %s not found\n", id)
-			log.Printf("[%s] Put request not fulfilled, can't put with new id\n", id)
-			return
-		}
-		badResponse(w, r, err)
-		return
-	}
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprint(w, "Updated succesfully")
-	log.Printf("[%s] Updated succesfully", id)
-}
-
 func GetProjectDataUpdater(db *sql.DB) http.HandlerFunc {
 
 	handler := func(w http.ResponseWriter, r *http.Request) {
@@ -147,9 +117,6 @@ func GetProjectRequestHandler(db *sql.DB) http.HandlerFunc {
 		case http.MethodPost:
 			createProject(db, w, r)
 			return
-		case http.MethodPut:
-			updateProject(db, w, r)
-			return
 		case http.MethodGet:
 			readProject(db, w, r)
 			return
@@ -157,7 +124,7 @@ func GetProjectRequestHandler(db *sql.DB) http.HandlerFunc {
 			deleteProject(db, w, r)
 			return
 		default:
-			badMethod(w, r, []string{"get", "put", "delete", "post"})
+			badMethod(w, r, []string{"get", "delete", "post"})
 		}
 	}
 }
