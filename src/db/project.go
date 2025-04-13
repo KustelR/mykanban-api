@@ -19,29 +19,22 @@ func UpdateProject(db *sql.DB, ctx context.Context, id string, project *types.Ka
 		tx.Rollback()
 		return err
 	}
-	stmt, err := tx.Prepare(`
-	INSERT Projects (
-	name, 
-	id
-	) VALUES (
-	 ?, # project name 
-	 ? # project id
-	);`)
+	stmt, err := tx.Prepare(`CALL create_project(?, ?, ?);`)
 	if err != nil {
 		return err
 	}
 	defer stmt.Close()
-	_, err = stmt.Exec(project.Name, id)
+	_, err = stmt.Exec(project.Name, id, "placeholder")
 	if err != nil {
 		tx.Rollback()
 		return err
 	}
-	_, err = AddTags(agent, id, &project.Tags)
+	_, err = CreateTag(agent, id, &project.Tags)
 	if err != nil {
 		tx.Rollback()
 		return err
 	}
-	_, err = AddColumns(agent, id, &project.Columns)
+	_, err = CreateColumns(agent, id, &project.Columns)
 	if err != nil {
 		tx.Rollback()
 		return err

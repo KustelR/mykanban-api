@@ -37,7 +37,7 @@ func readOneRow(agent *Agent, id string, query string) ([]string, []sql.RawBytes
 	return columns, values, nil
 }
 
-func readMultiRow(agent *Agent, id string, query string) ([]string, *[][]sql.RawBytes, error) {
+func readMultiRow(agent *Agent, id string, query string) ([]string, [][]sql.RawBytes, error) {
 	var err error
 	stmt, err := agent.Prepare(query)
 	if err != nil {
@@ -73,7 +73,7 @@ func readMultiRow(agent *Agent, id string, query string) ([]string, *[][]sql.Raw
 	if len(columns) == 0 {
 		return nil, nil, fmt.Errorf(" id: %s was not found", id)
 	}
-	return columns, &output, nil
+	return columns, output, nil
 }
 
 func GetCard(agent *Agent, id string) (*types.Card, error) {
@@ -107,8 +107,8 @@ func GetCards(db *sql.DB, id string) ([]types.Card, error) {
 	var outputCards []types.Card
 	columns, values, err := readMultiRow(CreateAgentDB(db), id, `select * from Cards where column_id=?;`)
 
-	for i := range *values {
-		row := (*values)[i]
+	for i := range values {
+		row := values[i]
 		rowLength := len(row)
 		var newCard types.Card
 		if row == nil {
@@ -144,7 +144,7 @@ func GetProject(db *sql.DB, id string) (*types.KanbanJson, error) {
 	if err != nil {
 		return nil, err
 	}
-	output.Name = project.Name
+	output = *project.Json()
 	projectTags, err := GetTagsByProject(db, id)
 	if err != nil {
 		return nil, err
@@ -189,7 +189,7 @@ func GetProject(db *sql.DB, id string) (*types.KanbanJson, error) {
 func readProject(db *sql.DB, id string) (*types.Kanban, error) {
 	agent := CreateAgentDB(db)
 	var project types.Kanban
-	columns, values, err := readOneRow(agent, id, "select * from Projects where id=?;")
+	columns, values, err := readOneRow(agent, id, "CALL read_project(?);")
 	for i, col := range values {
 		switch columns[i] {
 		case "id":
@@ -218,7 +218,7 @@ func readProject(db *sql.DB, id string) (*types.Kanban, error) {
 }
 
 func GetColumn(agent *Agent, id string) (*types.Column, error) {
-	colNames, values, err := readOneRow(agent, id, "SELECT * FROM Columns WHERE id = ?;")
+	colNames, values, err := readOneRow(agent, id, "SELECT * FROM ProjectColumns WHERE id = ?;")
 	if err != nil {
 		return nil, err
 	}
@@ -243,9 +243,9 @@ func GetColumn(agent *Agent, id string) (*types.Column, error) {
 }
 func readColumns(agent *Agent, projectId string) ([]types.Column, error) {
 	var outputColumns []types.Column
-	columns, values, err := readMultiRow(agent, projectId, `SELECT * FROM Columns WHERE project_id=?;`)
-	for i := range *values {
-		row := (*values)[i]
+	columns, values, err := readMultiRow(agent, projectId, `SELECT * FROM ProjectColumns WHERE project_id=?;`)
+	for i := range values {
+		row := values[i]
 		rowLength := len(row)
 		var newColumn types.Column
 		if row == nil {
