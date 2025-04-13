@@ -48,7 +48,7 @@ func UpdateCard(db *sql.DB, card *types.CardJson) error {
 	if err != nil {
 		return err
 	}
-	_, err = stmt.Exec(card.Id, card.ColumnId, card.Name, card.Description, "placeholder", drawOrder)
+	_, err = stmt.Exec(card.Id, card.ColumnId, card.Name, card.Description, "placeholder", drawOrder+1)
 	if err != nil {
 		tx.Rollback()
 		return err
