@@ -196,6 +196,22 @@ func readProject(db *sql.DB, id string) (*types.Kanban, error) {
 			project.Id = string(col)
 		case "name":
 			project.Name = string(col)
+		case "created_at":
+			data, err := strconv.Atoi(string(col))
+			if err != nil {
+				return nil, err
+			}
+			project.Created_At = data
+		case "updated_at":
+			data, err := strconv.Atoi(string(col))
+			if err != nil {
+				return nil, err
+			}
+			project.Updated_At = data
+		case "created_by":
+			project.Created_By = string(col)
+		case "updated_by":
+			project.Updated_By = string(col)
 		}
 	}
 	return &project, err
