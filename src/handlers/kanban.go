@@ -12,8 +12,7 @@ import (
 	"net/http"
 	"net/url"
 	"types"
-
-	"github.com/google/uuid"
+	"utils"
 )
 
 func readProject(db *sql.DB, w http.ResponseWriter, r *http.Request) {
@@ -39,6 +38,7 @@ func readProject(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 func createProject(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	log.Printf("[NEW] Received a post request from %s\n", r.Host)
+	defer r.Body.Close()
 	decoder := json.NewDecoder(r.Body)
 	var reqData types.KanbanJson
 	err := decoder.Decode(&reqData)
@@ -48,13 +48,13 @@ func createProject(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	id := uuid.New()
-	err = db_driver.PostProject(db, id.String()[:30], &reqData)
+	id := utils.GetUUID()
+	err = db_driver.CreateProject(db, id, &reqData)
 	if err != nil {
 		badResponse(w, r, err)
 		return
 	}
-	fmt.Fprint(w, id.String()[:30])
+	fmt.Fprint(w, id)
 	log.Printf("[%s] Created project\n", id)
 }
 
@@ -129,7 +129,7 @@ func GetProjectDataUpdater(db *sql.DB) http.HandlerFunc {
 				return
 			}
 		}
-		_, err = db.Exec("CALL update_project_data(?, ?)", id, reqData.Name)
+		_, err = db.Exec("CALL update_project_data(?, ?)", id, reqData.Name, "placeholder")
 		if err != nil {
 			badResponse(w, r, err)
 			return

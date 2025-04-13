@@ -75,7 +75,6 @@ func main() {
 	http.Handle("/tags/link", addTagToCardHandler)
 	http.Handle("/tags/unlink", removeTagFromCardHandler)
 
-	forceReorderHandler := newHandler(handlers.GetCardForcePopOrder(db))
 	columnDataUpdateHandler := newHandler(handlers.GetColumnDataUpdater(db))
 	columnDeleteHandler := newHandler(handlers.GetColumnDeleter(db))
 	columnCreateHandler := newHandler(handlers.GetColumnCreator(db))
@@ -83,7 +82,6 @@ func main() {
 	http.Handle("/columns/create", columnCreateHandler)
 	http.Handle("/columns/update", columnDataUpdateHandler)
 	http.Handle("/columns/delete", columnDeleteHandler)
-	http.Handle("/columns/force_reorder", forceReorderHandler)
 
 	var wg sync.WaitGroup
 	wg.Add(1)

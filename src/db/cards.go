@@ -55,7 +55,7 @@ func UpdateCard(db *sql.DB, card *types.CardJson) error {
 	return nil
 }
 
-func AddCardTags(agent *Agent, cardId string, tagId string) error {
+func CreateCardTags(agent *Agent, cardId string, tagId string) error {
 	stmt, err := agent.Prepare(`
 	INSERT CardsTags 
 		(card_id, tag_id) 
@@ -126,9 +126,9 @@ func DeleteCard(db *sql.DB, id string) error {
 	return nil
 }
 
-func AddCards(agent *Agent, columnId string, cards *[]types.CardJson) ([]types.CardJson, error) {
+func CreateCards(agent *Agent, columnId string, cards *[]types.CardJson) ([]types.CardJson, error) {
 	stmt, err := agent.Prepare(`
-	CALL add_card(?, ?, ?, ?, ?)
+	CALL create_card(?, ?, ?, ?, ?)
 `)
 	if err != nil {
 		return nil, err
@@ -161,7 +161,7 @@ out:
 			break out
 		}
 		changedCard.Order = drawOrder + 1
-		_, err = stmt.Exec(columnId, changedCard.Id, changedCard.Name, changedCard.Description, changedCard.Order)
+		_, err = stmt.Exec(columnId, changedCard.Id, changedCard.Name, changedCard.Description, changedCard.Order, "placeholder")
 		if err != nil {
 			cardErr = err
 			break out
@@ -171,7 +171,7 @@ out:
 			err := row.Scan()
 			if err != nil {
 				if errors.Is(err, sql.ErrNoRows) {
-					AddCardTags(agent, card.Id, tagId)
+					CreateCardTags(agent, card.Id, tagId)
 				} else {
 					cardErr = err
 					break out

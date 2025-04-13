@@ -99,7 +99,7 @@ func GetCardTagAdder(db *sql.DB) http.HandlerFunc {
 				return
 			}
 		}
-		err = db_driver.AddCardTags(db_driver.CreateAgentDB(db), reqData.CardId, reqData.TagId)
+		err = db_driver.CreateCardTags(db_driver.CreateAgentDB(db), reqData.CardId, reqData.TagId)
 		if err != nil {
 			badResponse(w, r, err)
 			return
@@ -164,7 +164,7 @@ func GetTagCreator(db *sql.DB) http.HandlerFunc {
 		}
 		tags := make([]types.TagJson, 0)
 		tags = append(tags, reqData)
-		newTags, err := db_driver.AddTags(db_driver.CreateAgentDB(db), id, &tags)
+		newTags, err := db_driver.CreateTag(db_driver.CreateAgentDB(db), id, &tags)
 		if err != nil {
 			badResponse(w, r, err)
 			return
@@ -230,7 +230,7 @@ func GetCardCreator(db *sql.DB) http.HandlerFunc {
 			}
 		}
 		cards := []types.CardJson{reqData}
-		newCards, err := db_driver.AddCards(db_driver.CreateAgentDB(db), reqData.ColumnId, &cards)
+		newCards, err := db_driver.CreateCards(db_driver.CreateAgentDB(db), reqData.ColumnId, &cards)
 		if err != nil {
 			badResponse(w, r, err)
 			return
@@ -392,7 +392,7 @@ func GetColumnCreator(db *sql.DB) http.HandlerFunc {
 		}
 		columns := make([]types.ColumnJson, 0)
 		columns = append(columns, reqData)
-		newColumns, err := db_driver.AddColumns(db_driver.CreateAgentDB(db), *id, &columns)
+		newColumns, err := db_driver.CreateColumns(db_driver.CreateAgentDB(db), *id, &columns)
 		if err != nil {
 			badResponse(w, r, err)
 			return

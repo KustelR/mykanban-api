@@ -3,10 +3,8 @@ package db_driver
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"types"
-
-	"github.com/google/uuid"
+	"utils"
 )
 
 func UpdateColumnData(db *sql.DB, column *types.Column) error {
@@ -39,7 +37,7 @@ func DeleteColumn(db *sql.DB, id string) error {
 		return err
 	}
 	defer tx.Rollback()
-	stmt, err := agent.Prepare("DELETE FROM Columns WHERE id = ?;")
+	stmt, err := agent.Prepare("DELETE FROM ProjectColumns WHERE id = ?;")
 	if err != nil {
 		tx.Rollback()
 		return err
@@ -54,7 +52,6 @@ func DeleteColumn(db *sql.DB, id string) error {
 		return nil
 	}
 	defer stmtP.Close()
-	fmt.Println(oldCol.ProjectId, oldCol.Order)
 	stmtP.Exec(oldCol.ProjectId, oldCol.Order)
 	stmt.Exec(id)
 
@@ -65,8 +62,8 @@ func DeleteColumn(db *sql.DB, id string) error {
 	return nil
 }
 
-func AddColumns(agent *Agent, projectId string, columns *[]types.ColumnJson) ([]types.ColumnJson, error) {
-	stmt, err := agent.Prepare(`CALL add_column(?, ?, ?, ?)`)
+func CreateColumns(agent *Agent, projectId string, columns *[]types.ColumnJson) ([]types.ColumnJson, error) {
+	stmt, err := agent.Prepare(`CALL create_column(?, ?, ?, ?, ?)`)
 	if err != nil {
 		return nil, err
 	}
@@ -77,11 +74,11 @@ func AddColumns(agent *Agent, projectId string, columns *[]types.ColumnJson) ([]
 
 out:
 	for idx, col := range *columns {
-		id := uuid.New().String()[:30]
+		id := utils.GetUUID()
 		changedCol := col
 		changedCol.Id = id
 
-		dbColNames, data, err := readOneRow(agent, projectId, "SELECT max(draw_order) FROM Columns WHERE project_id= ?;")
+		dbColNames, data, err := readOneRow(agent, projectId, "SELECT max(draw_order) FROM ProjectColumns WHERE project_id= ?;")
 		if err != nil {
 			colErr = err
 			break out
@@ -92,12 +89,12 @@ out:
 			break out
 		}
 		changedCol.Order = drawOrder + 1
-		_, err = stmt.Exec(projectId, changedCol.Id, changedCol.Name, changedCol.Order)
+		_, err = stmt.Exec(projectId, changedCol.Id, changedCol.Name, changedCol.Order, "placeholder")
 		if err != nil {
 			colErr = err
 			break out
 		}
-		cards, colErr := AddCards(agent, col.Id, &col.Cards)
+		cards, colErr := CreateCards(agent, col.Id, &col.Cards)
 		if colErr != nil {
 			break out
 		}

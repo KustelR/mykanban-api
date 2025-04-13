@@ -7,22 +7,8 @@ import (
 	"github.com/google/uuid"
 )
 
-func AddTags(agent *Agent, projectId string, tags *[]types.TagJson) ([]types.TagJson, error) {
-	stmt, err := agent.Prepare(`
-	insert Tags (
-    id,
-    project_id,
-    name,
-    color
-) values (
-    ?, # id
-    ?, # project id
-    ?, # name
-    ? # color
-) ON DUPLICATE KEY UPDATE
- project_id = project_id,
- name=name,
- color=color;`)
+func CreateTag(agent *Agent, projectId string, tags *[]types.TagJson) ([]types.TagJson, error) {
+	stmt, err := agent.Prepare(`CALL create_tag(?, ?, ?, ?, ?);`)
 	if err != nil {
 		return nil, err
 	}
@@ -33,7 +19,7 @@ func AddTags(agent *Agent, projectId string, tags *[]types.TagJson) ([]types.Tag
 		newTag := tag
 		newTag.Id = uuid.New().String()[:30]
 		createdTags[idx] = newTag
-		_, err := stmt.Exec(newTag.Id, projectId, tag.Name, tag.Color)
+		_, err := stmt.Exec(newTag.Id, projectId, tag.Name, tag.Color, "placeholder")
 		if err != nil {
 			tagErr = err
 		}
@@ -50,8 +36,8 @@ func GetTagsByCard(db *sql.DB, id string) ([]types.Tag, error) {
 CardsTags on Tags.id = CardsTags.tag_id join
 Cards on Cards.id = CardsTags.card_id
 where Cards.id=?;`)
-	for i := range *values {
-		row := (*values)[i]
+	for i := range values {
+		row := values[i]
 		rowLength := len(row)
 		var newTag types.Tag
 		for j := 0; j < rowLength; j++ {
@@ -76,11 +62,11 @@ func GetTagsByProject(db *sql.DB, id string) ([]types.Tag, error) {
 	if err != nil {
 		return nil, err
 	}
-	for i := range *values {
-		row := (*values)[i]
+	for i := range values {
+		row := values[i]
 		rowLength := len(row)
 		var newTag types.Tag
-		if (*values)[i] == nil {
+		if values[i] == nil {
 			continue
 		}
 		for j := 0; j < rowLength; j++ {
