@@ -14,19 +14,22 @@ func UpdateColumnData(db *sql.DB, column *types.Column) error {
 		return err
 	}
 	defer tx.Rollback()
-	stmt, err := agent.Prepare("CALL update_column_data(?, ?, ?)")
+	stmt, err := agent.Prepare("CALL update_column_data(?, ?, ?, ?)")
 	if err != nil {
 		tx.Rollback()
 		return err
 	}
 	defer stmt.Close()
-	_, err = stmt.Exec(column.Id, column.Name, column.Order)
+	_, err = stmt.Exec(column.Id, column.Name, "placeholder", column.Order)
 	if err != nil {
 		tx.Rollback()
 		return err
 	}
 
-	tx.Commit()
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
 	return nil
 }
 

@@ -328,7 +328,7 @@ func GetColumnDataUpdater(db *sql.DB) http.HandlerFunc {
 			}
 		}
 		colData := types.Column{Id: reqData.Id, Name: reqData.Name, Order: reqData.Order, ProjectId: *id}
-		db_driver.UpdateColumnData(db, &colData)
+		err = db_driver.UpdateColumnData(db, &colData)
 		if err != nil {
 			badResponse(w, r, err)
 			return
