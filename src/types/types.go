@@ -1,28 +1,28 @@
 package types
 
 type Tag struct {
-	Id         string
-	ProjectId  string
-	Name       string
-	Color      string
-	Created_At int
-	Updated_At int
-	Created_By string
-	Updated_By string
+	Id        string
+	ProjectId string
+	Name      string
+	Color     string
+	CreatedAt int
+	UpdatedAt int
+	CreatedBy string
+	UpdatedBy string
 }
 
 type TagJson struct {
-	Id         string `json:"id"`
-	Name       string `json:"name"`
-	Color      string `json:"color"`
-	Created_At int    `json:"created_at"`
-	Updated_At int    `json:"updated_at"`
-	Created_By string `json:"created_by"`
-	Updated_By string `json:"updated_by"`
+	Id        string `json:"id"`
+	Name      string `json:"name"`
+	Color     string `json:"color"`
+	CreatedAt int    `json:"createdAt"`
+	UpdatedAt int    `json:"updatedAt"`
+	CreatedBy string `json:"createdBy"`
+	UpdatedBy string `json:"updatedBy"`
 }
 
 func (t *Tag) Json() *TagJson {
-	return &TagJson{t.Id, t.Name, t.Color, t.Created_At, t.Updated_At, t.Created_By, t.Updated_By}
+	return &TagJson{t.Id, t.Name, t.Color, t.CreatedAt, t.UpdatedAt, t.CreatedBy, t.UpdatedBy}
 }
 
 type Card struct {
@@ -31,10 +31,10 @@ type Card struct {
 	Name        string
 	Order       int
 	Description string
-	Created_At  int
-	Updated_At  int
-	Created_By  string
-	Updated_By  string
+	CreatedAt   int
+	UpdatedAt   int
+	CreatedBy   string
+	UpdatedBy   string
 }
 type CardJson struct {
 	Id          string   `json:"id"`
@@ -43,41 +43,41 @@ type CardJson struct {
 	Order       int      `json:"order"`
 	Description string   `json:"description"`
 	TagIds      []string `json:"tagIds"`
-	Created_At  int      `json:"created_at"`
-	Updated_At  int      `json:"updated_at"`
-	Created_By  string   `json:"created_by"`
-	Updated_By  string   `json:"updated_by"`
+	CreatedAt   int      `json:"createdAt"`
+	UpdatedAt   int      `json:"updatedAt"`
+	CreatedBy   string   `json:"createdBy"`
+	UpdatedBy   string   `json:"updatedBy"`
 }
 
 func (c *Card) Json() *CardJson {
 	var tagIds [0]string
-	return &CardJson{c.Id, c.ColumnId, c.Name, c.Order, c.Description, tagIds[:], c.Created_At, c.Updated_At, c.Created_By, c.Updated_By}
+	return &CardJson{c.Id, c.ColumnId, c.Name, c.Order, c.Description, tagIds[:], c.CreatedAt, c.UpdatedAt, c.CreatedBy, c.UpdatedBy}
 }
 
 type Column struct {
-	Id         string
-	Name       string
-	Order      int
-	ProjectId  string
-	Created_At int
-	Updated_At int
-	Created_By string
-	Updated_By string
+	Id        string
+	Name      string
+	Order     int
+	ProjectId string
+	CreatedAt int
+	UpdatedAt int
+	CreatedBy string
+	UpdatedBy string
 }
 type ColumnJson struct {
-	Id         string     `json:"id"`
-	Name       string     `json:"name"`
-	Order      int        `json:"order"`
-	Cards      []CardJson `json:"cards"`
-	Created_At int        `json:"created_at"`
-	Updated_At int        `json:"updated_at"`
-	Created_By string     `json:"created_by"`
-	Updated_By string     `json:"updated_by"`
+	Id        string     `json:"id"`
+	Name      string     `json:"name"`
+	Order     int        `json:"order"`
+	Cards     []CardJson `json:"cards"`
+	CreatedAt int        `json:"createdAt"`
+	UpdatedAt int        `json:"updatedAt"`
+	CreatedBy string     `json:"createdBy"`
+	UpdatedBy string     `json:"updatedBy"`
 }
 
 func (c *Column) Json() *ColumnJson {
 	var cards [0]CardJson
-	return &ColumnJson{c.Id, c.Name, c.Order, cards[:], c.Created_At, c.Updated_At, c.Created_By, c.Updated_By}
+	return &ColumnJson{c.Id, c.Name, c.Order, cards[:], c.CreatedAt, c.UpdatedAt, c.CreatedBy, c.UpdatedBy}
 }
 
 type Kanban struct {
@@ -89,13 +89,13 @@ type Kanban struct {
 	Updated_By string
 }
 type KanbanJson struct {
-	Name       string       `json:"name"`
-	Columns    []ColumnJson `json:"columns"`
-	Tags       []TagJson    `json:"tags"`
-	Created_At int          `json:"created_at"`
-	Updated_At int          `json:"updated_at"`
-	Created_By string       `json:"created_by"`
-	Updated_By string       `json:"updated_by"`
+	Name      string       `json:"name"`
+	Columns   []ColumnJson `json:"columns"`
+	Tags      []TagJson    `json:"tags"`
+	CreatedAt int          `json:"createdAt"`
+	UpdatedAt int          `json:"updatedAt"`
+	CreatedBy string       `json:"createdBy"`
+	UpdatedBy string       `json:"updatedBy"`
 }
 
 func (k *Kanban) Json() *KanbanJson {

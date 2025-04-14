@@ -138,10 +138,10 @@ func GetCardsByColumnId(db *sql.DB, id string) ([]types.Card, error) {
 		if err != nil {
 			return nil, err
 		}
-		newCard.Created_At = meta.Created_at
-		newCard.Updated_At = meta.Updated_at
-		newCard.Created_By = meta.Created_by
-		newCard.Updated_By = meta.Updated_by
+		newCard.CreatedAt = meta.Created_at
+		newCard.UpdatedAt = meta.Updated_at
+		newCard.CreatedBy = meta.Created_by
+		newCard.UpdatedBy = meta.Updated_by
 		outputCards = append(outputCards, newCard)
 	}
 	return outputCards, err
@@ -228,10 +228,10 @@ func ReadColumns(agent *Agent, projectId string) ([]types.Column, error) {
 		if err != nil {
 			return nil, err
 		}
-		newColumn.Created_At = meta.Created_at
-		newColumn.Updated_At = meta.Updated_at
-		newColumn.Created_By = meta.Created_by
-		newColumn.Updated_By = meta.Updated_by
+		newColumn.CreatedAt = meta.Created_at
+		newColumn.UpdatedAt = meta.Updated_at
+		newColumn.CreatedBy = meta.Created_by
+		newColumn.UpdatedBy = meta.Updated_by
 		outputColumns = append(outputColumns, newColumn)
 	}
 	return outputColumns, err
@@ -306,10 +306,10 @@ func GetTagsByCard(db *sql.DB, id string) ([]types.Tag, error) {
 		if err != nil {
 			return nil, err
 		}
-		newTag.Created_At = meta.Created_at
-		newTag.Updated_At = meta.Updated_at
-		newTag.Created_By = meta.Created_by
-		newTag.Updated_By = meta.Updated_by
+		newTag.CreatedAt = meta.Created_at
+		newTag.UpdatedAt = meta.Updated_at
+		newTag.CreatedBy = meta.Created_by
+		newTag.UpdatedBy = meta.Updated_by
 		outputTags = append(outputTags, newTag)
 	}
 	return outputTags, err
@@ -343,10 +343,10 @@ func GetTagsByProject(db *sql.DB, id string) ([]types.Tag, error) {
 		if err != nil {
 			return nil, err
 		}
-		newTag.Created_At = meta.Created_at
-		newTag.Updated_At = meta.Updated_at
-		newTag.Created_By = meta.Created_by
-		newTag.Updated_By = meta.Updated_by
+		newTag.CreatedAt = meta.Created_at
+		newTag.UpdatedAt = meta.Updated_at
+		newTag.CreatedBy = meta.Created_by
+		newTag.UpdatedBy = meta.Updated_by
 		outputTags = append(outputTags, newTag)
 	}
 	return outputTags, err
