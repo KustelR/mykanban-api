@@ -1,0 +1,1 @@
+Backend api for communicating with database for mykanban project. See monorepo if you want a build guide
