@@ -40,7 +40,7 @@ func UpdateCard(db *sql.DB, card *types.CardJson) error {
 			return err
 		}
 	}
-	dbColNames, data, err := readOneRow(agent, card.ColumnId, "SELECT max(draw_order) FROM cards WHERE column_id = ?;")
+	dbColNames, data, err := readOneRow(agent, card.ColumnId, "SELECT max(draw_order) FROM Cards WHERE column_id = ?;")
 	if err != nil {
 		return err
 	}
