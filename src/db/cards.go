@@ -9,56 +9,58 @@ import (
 	"utils"
 )
 
-func UpdateCard(db *sql.DB, card *types.CardJson) error {
+func UpdateCard(db *sql.DB, card *types.CardJson) (*types.CardJson, error) {
 	tx, err := db.BeginTx(context.Background(), nil)
 	agent := CreateAgentTX(tx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	stmt, err := agent.Prepare("CALL update_card(?, ?, ?, ?, ?, ?);")
 	if err != nil {
 		tx.Rollback()
-		return err
+		return nil, err
 	}
 	defer stmt.Close()
 
 	oldCard, err := GetCard(agent, card.Id)
 	if err != nil {
 		tx.Rollback()
-		return err
+		return nil, err
 	}
-	if oldCard.ColumnId != card.ColumnId {
+	newCard := *card
+	if oldCard.ColumnId != newCard.ColumnId {
 		stmtPop, err := agent.Prepare("CALL pop_card_reorder(?, ?);")
 		if err != nil {
 			tx.Rollback()
-			return err
+			return nil, err
 		}
 		defer stmt.Close()
 		_, err = stmtPop.Exec(oldCard.ColumnId, oldCard.Order)
 		if err != nil {
 			tx.Rollback()
-			return err
+			return nil, err
 		}
+		dbColNames, data, err := readOneRow(agent, card.ColumnId, "SELECT max(draw_order) FROM Cards WHERE column_id = ?;")
+		if err != nil {
+			return nil, err
+		}
+		maxDrawOrder, err := GetMaxDrawOrder(dbColNames, data)
+		if err != nil {
+			return nil, err
+		}
+		newCard.Order = maxDrawOrder + 1
 	}
-	dbColNames, data, err := readOneRow(agent, card.ColumnId, "SELECT max(draw_order) FROM Cards WHERE column_id = ?;")
-	if err != nil {
-		return err
-	}
-	drawOrder, err := GetMaxDrawOrder(dbColNames, data)
-	if err != nil {
-		return err
-	}
-	_, err = stmt.Exec(card.Id, card.ColumnId, card.Name, card.Description, "placeholder", drawOrder+1)
+	_, err = stmt.Exec(newCard.Id, newCard.ColumnId, newCard.Name, newCard.Description, "placeholder", newCard.Order)
 	if err != nil {
 		tx.Rollback()
-		return err
+		return nil, err
 	}
 
 	err = tx.Commit()
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return nil
+	return &newCard, nil
 }
 
 func CreateCardTags(agent *Agent, cardId string, tagId string) error {
