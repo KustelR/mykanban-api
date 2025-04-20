@@ -174,13 +174,13 @@ func ReadProject(db *sql.DB, id string) (*types.Kanban, error) {
 }
 
 func GetColumn(agent *Agent, id string) (*types.Column, error) {
-	colNames, values, err := readOneRow(agent, id, "SELECT * FROM ProjectColumns WHERE id = ?;")
+	columns, values, err := readOneRow(agent, id, "SELECT * FROM ProjectColumns WHERE id = ?;")
 	if err != nil {
 		return nil, err
 	}
 	var column types.Column
 	for i, col := range values {
-		switch colNames[i] {
+		switch columns[i] {
 		case "id":
 			column.Id = string(col)
 		case "name":
@@ -195,6 +195,15 @@ func GetColumn(agent *Agent, id string) (*types.Column, error) {
 			column.Order = val
 		}
 	}
+
+	meta, err := readMeta(columns, values)
+	if err != nil {
+		return nil, err
+	}
+	column.CreatedAt = meta.Created_at
+	column.UpdatedAt = meta.Updated_at
+	column.CreatedBy = meta.Created_by
+	column.UpdatedBy = meta.Updated_by
 	return &column, nil
 }
 func ReadColumns(agent *Agent, projectId string) ([]types.Column, error) {

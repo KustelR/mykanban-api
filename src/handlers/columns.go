@@ -38,8 +38,18 @@ func GetColumnDataUpdater(db *sql.DB) http.HandlerFunc {
 			badResponse(w, r, err)
 			return
 		}
+		newCol, err := db_driver.GetColumn(db_driver.CreateAgentDB(db), reqData.Id)
+		if err != nil {
+			badResponse(w, r, err)
+			return
+		}
+		marshRes, err := json.Marshal(newCol.Json())
+		if err != nil {
+			badResponse(w, r, err)
+			return
+		}
+		fmt.Fprint(w, string(marshRes))
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprint(w, "Updated succesfully")
 		log.Printf("[PUT] Updated succesfully\n")
 	}
 	return handler
