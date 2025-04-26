@@ -31,9 +31,9 @@ func badRequest(w http.ResponseWriter, r *http.Request, err error) {
 	log.Printf("Request from %s not fulfilled, bad request: %s\n", r.Host, err)
 }
 func badResponse(w http.ResponseWriter, r *http.Request, err error) {
-	w.WriteHeader(http.StatusBadRequest)
-	fmt.Fprintf(w, "Bad Request: %s\n", err)
-	log.Printf("[%s] Request not fulfilled, contact api developers for more data\n", r.Host)
+	w.WriteHeader(http.StatusInternalServerError)
+	log.Printf("Bad Request: %s\n", err)
+	fmt.Fprintf(w, "[%s] Request not fulfilled, contact api developers for more data\n", r.Host)
 }
 
 func badMethod(w http.ResponseWriter, r *http.Request, methods []string) {
