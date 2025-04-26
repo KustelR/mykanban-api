@@ -174,7 +174,7 @@ func ReadProject(db *sql.DB, id string) (*types.Kanban, error) {
 }
 
 func GetColumn(agent *Agent, id string) (*types.Column, error) {
-	columns, values, err := readOneRow(agent, id, "SELECT * FROM ProjectColumns WHERE id = ?;")
+	columns, values, err := readOneRow(agent, id, "CALL read_column_by_id(?);")
 	if err != nil {
 		return nil, err
 	}
@@ -268,24 +268,25 @@ type Metadata struct {
 
 func readMeta(columns []string, data []sql.RawBytes) (*Metadata, error) {
 	var result Metadata
-	for idx, val := range data {
-		switch columns[idx] {
+	for idx, col := range columns {
+		fmt.Println(col, string(data[idx]))
+		switch col {
 		case "created_at":
-			data, err := strconv.Atoi(string(val))
+			data, err := strconv.Atoi(string(data[idx]))
 			if err != nil {
 				return nil, err
 			}
 			result.Created_at = data
 		case "updated_at":
-			data, err := strconv.Atoi(string(val))
+			data, err := strconv.Atoi(string(data[idx]))
 			if err != nil {
 				return nil, err
 			}
 			result.Updated_at = data
 		case "created_by":
-			result.Created_by = string(val)
+			result.Created_by = string(data[idx])
 		case "updated_by":
-			result.Updated_by = string(val)
+			result.Updated_by = string(data[idx])
 		}
 	}
 	return &result, nil
