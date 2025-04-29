@@ -3,10 +3,13 @@ package db_driver
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"types"
 	"utils"
+
+	"github.com/KustelR/jsondiff"
 )
 
 func UpdateCard(db *sql.DB, card *types.CardJson) (*types.CardJson, error) {
@@ -23,6 +26,28 @@ func UpdateCard(db *sql.DB, card *types.CardJson) (*types.CardJson, error) {
 	defer stmt.Close()
 
 	oldCard, err := GetCard(agent, card.Id)
+	if err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+	oldJson, err := json.Marshal(oldCard.Json())
+
+	if err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+	newJson, err := json.Marshal(*card)
+	if err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+	diff1, diff2 := jsondiff.Diff(oldJson, newJson)
+	stmtUR, err := agent.Prepare("CALL create_card_update_record(?, ?, ?);")
+	if err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+	_, err = stmtUR.Exec(card.Id, string(diff1), string(diff2))
 	if err != nil {
 		tx.Rollback()
 		return nil, err

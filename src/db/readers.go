@@ -77,7 +77,7 @@ func readMultiRow(agent *Agent, id string, query string) ([]string, [][]sql.RawB
 }
 
 func GetCard(agent *Agent, id string) (*types.Card, error) {
-	columns, values, err := readOneRow(agent, id, `SELECT * FROM Cards WHERE id = ?;`)
+	columns, values, err := readOneRow(agent, id, `CALL read_card_by_id(?);`)
 	if err != nil {
 		return nil, err
 	}
@@ -100,6 +100,15 @@ func GetCard(agent *Agent, id string) (*types.Card, error) {
 			card.Order = val
 		}
 	}
+
+	meta, err := readMeta(columns, values)
+	if err != nil {
+		return nil, err
+	}
+	card.CreatedAt = meta.Created_at
+	card.UpdatedAt = meta.Updated_at
+	card.CreatedBy = meta.Created_by
+	card.UpdatedBy = meta.Updated_by
 	return &card, nil
 }
 

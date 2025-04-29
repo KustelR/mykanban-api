@@ -1,4 +1,9 @@
 filippo.io/edwards25519 v1.1.0 h1:FNf4tywRC1HmFuKW5xopWpigGjJKiJSV0Cqo0cJWDaA=
 filippo.io/edwards25519 v1.1.0/go.mod h1:BxyFTGdWcka3PhytdK4V28tE5sGfRvvvRV7EaN4VDT4=
+github.com/KustelR/jsondiff v0.0.0-20250429045229-dcd339760c08 h1:mPU3D26BGrGZzAGbeL0mYYNdbO9kYKZBiez4EksHe1A=
+github.com/KustelR/jsondiff v0.0.0-20250429045229-dcd339760c08/go.mod h1:rf5CFE/DXNlL7uIXBV756zExV454wtnWXWeTxEp5CA0=
+github.com/KustelR/jsondiff v0.0.0-20250429045755-2295ab86ff52 h1:FAf66XffaYp5d+sNDXpUh4PJPG0OxPVk96gGj2+ZYSg=
+github.com/KustelR/jsondiff v0.0.0-20250429045755-2295ab86ff52/go.mod h1:rf5CFE/DXNlL7uIXBV756zExV454wtnWXWeTxEp5CA0=
+github.com/go-sql-driver/mysql v1.9.0/go.mod h1:pDetrLJeA3oMujJuvXc8RJoasr589B6A9fwzD3QMrqw=
 github.com/go-sql-driver/mysql v1.9.1 h1:FrjNGn/BsJQjVRuSa8CBrM5BWA9BWoXXat3KrtSb/iI=
 github.com/go-sql-driver/mysql v1.9.1/go.mod h1:qn46aNg1333BRMNU69Lq93t8du/dwxI64Gl8i5p1WMU=
