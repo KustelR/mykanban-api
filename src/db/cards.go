@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"types"
 	"utils"
 
@@ -150,7 +149,6 @@ func DeleteCard(db *sql.DB, id string) error {
 		tx.Rollback()
 		return err
 	}
-	fmt.Println(card)
 
 	err = tx.Commit()
 	if err != nil {
